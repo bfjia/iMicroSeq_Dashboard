@@ -94,16 +94,14 @@
           <div id="coverage-chart" class="chart-large"></div>
       </section>
 
-          <!-- CTA buttons: portal explorer and interactive dashboard -->
-          <div class="explore-actions">
-            <button type="button" class="explore-cta" onclick="window.location.href='https://portal-ui.imicroseq-dataportal.ca/explorer/environmental'">Explore the iMicroSeq Data Portal</button>
-            <button type="button" class="primary-cta" onclick="window.location.href='./dashboard.html'">Visualize on the Interactive Dashboard</button>
-          </div>
-        </div>
-      </section>
+      <!-- CTA buttons: portal explorer and interactive dashboard -->
+      <div class="explore-actions">
+        <button type="button" class="explore-cta" onclick="window.location.href='https://portal-ui.imicroseq-dataportal.ca/explorer/environmental'">Explore the iMicroSeq Data Portal</button>
+        <button type="button" class="primary-cta" onclick="window.location.href='./dashboard.html'">Visualize on the Interactive Dashboard</button>
+      </div>
     </main>
 
-    <!-- Dashboard logic: fetch /api/dashboard, summary animation, lazy charts -->
+    <!-- Dashboard logic: fetch /data/*.json.gz, decompress, lazy charts -->
     <script src="app.js"></script>
   </body>
 </html>

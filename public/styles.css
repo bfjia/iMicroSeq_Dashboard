@@ -522,6 +522,21 @@ body {
   opacity: 0.85;
 }
 
+.viral-all-filter-warning {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #92400e;
+  line-height: 1.4;
+  max-width: 52rem;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+.viral-all-filter-warning strong {
+  font-weight: 800;
+}
+
 .viral-load-chart {
   width: 100%;
   min-width: 280px;
@@ -539,12 +554,49 @@ body {
   padding-bottom: 1rem;
   border-bottom: 1px solid #e5e7eb;
 }
+.viral-chart-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem 1.5rem;
+}
 .viral-date-range-wrap.hidden {
   display: none;
 }
-.viral-date-range-label {
+.viral-date-calendar-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 1rem 1.5rem;
+  width: 100%;
+  max-width: 480px;
+}
+.viral-date-cal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+.viral-date-cal-label {
+  font-weight: 500;
+}
+.viral-date-cal-input {
+  font: inherit;
   font-size: 0.9rem;
-  color: #6b7280;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #111827;
+  min-height: 2.25rem;
+  box-sizing: border-box;
+}
+.viral-date-cal-input:focus {
+  outline: 2px solid #4a63e7;
+  outline-offset: 1px;
 }
 .viral-show-line-toggle {
   display: flex;

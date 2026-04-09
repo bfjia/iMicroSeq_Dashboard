@@ -12,7 +12,7 @@ The app can run as a Cloudflare Worker with static assets:
 
 3. **Deploy**: `npm run cf:deploy` (DEPLOY to cloudflare's edge network. The site will be live at imicroseq-dashboard.bfjia.net).
 
-**Viral Loads data:** The dashboard’s Viral Loads section loads `public/data/viralLoadData.json.gz`. Generate it with `python scripts/build_quant_tsv.py` (reads `data/imicroseq.csv.xz`, writes `data/viralLoadData.json.gz` and copies to `public/data/viralLoadData.json.gz`). For local testing, serve over HTTP (e.g. `npx serve public` or `python -m http.server --directory public`); opening the HTML file directly (file://) will not load data.
+**Site data:** After updating `data/imicroseq.csv.xz`, regenerate assets under `public/data/` with `bash scripts/update_website_data.sh` (runs the Python builders). Chart payloads are **gzip-compressed JSON** (`.json.gz`); the browser decompresses them in `app.js`. For local testing, serve over HTTP (e.g. `npx serve public` or `python -m http.server --directory public`); opening the HTML file directly (`file://`) will not load data.
 
 
 # HOW CLOUDFLARE WORKER WORKS WITH THIS APP:
@@ -22,7 +22,7 @@ The app can run as a Cloudflare Worker with static assets:
 When you run `wrangler deploy` (or `npm run cf:deploy`):
 
 - **Worker script**  
-  Your `cf-worker/index.ts` (and bundled `dashboard-data.ts`) is compiled and deployed as the daemon that runs on every matching request.
+  Your `cf-worker/index.ts` is compiled and deployed; it forwards requests to static assets via the ASSETS binding.
 
 - **Static assets**  
   Everything under `public/` (HTML, CSS, JS, images) is uploaded and attached to the Worker via the **ASSETS** binding (`[assets]` in `wrangler.toml`). Those files are stored on Cloudflare’s edge; they are **not** served by your own server.
@@ -44,16 +44,8 @@ Inside the Worker:
 1. **URL is checked**  
    `const url = new URL(request.url)` so you can branch on path (and host, etc.).
 
-2. **`/api/dashboard`**  
-   - If pathname is exactly `/api/dashboard`:
-     - The Worker calls `loadDashboardData()` (unless it’s already cached).
-     - That function `fetch()`es the TSV/CSV from GitHub, parses them in memory, and builds the JSON your frontend expects.
-     - The result is cached in a module-level variable (`cachedData`) for the lifetime of that Worker isolate, so later requests don’t re-fetch from GitHub.
-     - The Worker returns **JSON** with `Response.json(cachedData)` and a `Cache-Control` header.
-   - So **this path is fully handled by your Worker code**; no static file is involved.
-
-3. **Everything else (HTML, CSS, JS, images)**  
-   - For any other path (e.g. `/`, `/styles.css`, `/app.js`, `/img/...`):
+2. **Everything (HTML, CSS, JS, images, `/data/*.json.gz`)**  
+   - For each path (e.g. `/`, `/styles.css`, `/app.js`, `/data/index_hero_stats.json.gz`, `/img/...`):
      - The Worker does **not** serve a file itself.
      - It forwards the request to the **ASSETS** binding: `return env.ASSETS.fetch(request)`.
    - **ASSETS** is a built-in binding that:
@@ -61,10 +53,7 @@ Inside the Worker:
      - Serves the matching file (with correct content-type, caching, etc.).
      - Returns 404 if there’s no matching asset.
 
-So:
-
-- **API:** Worker runs your TypeScript, fetches from GitHub, parses, caches, returns JSON.
-- **Static content:** Worker delegates to ASSETS, which serves from the `public/` snapshot uploaded at deploy time.
+So: **all responses** are static files from `public/` served through ASSETS (including gzip-compressed chart data under `/data/`).
 
 ---
 
@@ -76,7 +65,7 @@ Browser
    ├─ GET /                    → Worker → ASSETS.fetch(request) → index.html
    ├─ GET /styles.css           → Worker → ASSETS.fetch(request) → styles.css
    ├─ GET /app.js               → Worker → ASSETS.fetch(request) → app.js
-   ├─ GET /api/dashboard        → Worker → loadDashboardData() (or cache) → JSON
+   ├─ GET /data/index_hero_stats.json.gz → Worker → ASSETS.fetch(request) → gzip
    └─ GET /img/imicroseq-logo.png → Worker → ASSETS.fetch(request) → image
 ```
 
@@ -91,10 +80,9 @@ Browser
   The Worker uses the **Fetch API** (Request/Response) and **env.ASSETS**. Local and production both run the same Worker (via `wrangler dev` or Cloudflare).
 
 - **Caching**  
-  - **Dashboard API:** In-memory cache in the Worker (per isolate) + `Cache-Control: public, max-age=300` so browsers can cache the JSON for 5 minutes.
-  - **Static assets:** Cloudflare can cache them at the edge based on the ASSETS binding’s behavior.
+  Cloudflare can cache static assets at the edge based on the ASSETS binding’s behavior and response headers.
 
 - **Custom domain**  
   The `routes` in `wrangler.toml` (e.g. `pattern = "imicroseq-dashboard.bfjia.net"` with `zone_name = "bfjia.net"`) tell Cloudflare to run this Worker for that host. DNS for `imicroseq-dashboard.bfjia.net` points to Cloudflare, so traffic hits the edge and then your Worker.
 
-In short: **the Worker is the only “server” in production**—it either runs your API logic for `/api/dashboard` or hands the request to ASSETS to deliver the static files from `public/`.
+In short: **the Worker forwards every request to ASSETS**, which delivers the static files from `public/`.
