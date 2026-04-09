@@ -126,27 +126,43 @@
                 <select id="viral-gene"></select>
               </label>
               <label class="field-select viral-field-select">
-                <span class="label">Measurement Unit <br> *TEMP: Data is not normalized, each unit is a different set of measurements*</span>
+                <span class="label">Measurement Unit</span>
                 <select id="viral-unit"></select>
               </label>
             </div>
           </div>
           <div class="viral-date-range-wrap" id="viral-date-range">
-            <div class="viral-date-range-label">
-              <span id="viral-date-from-label">—</span>
-              <span aria-hidden="true"> to </span>
-              <span id="viral-date-to-label">—</span>
+            <div class="viral-date-calendar-row" role="group" aria-label="Choose dates on the calendar">
+              <label class="viral-date-cal-field">
+                <span class="viral-date-cal-label">From</span>
+                <input type="date" id="viral-date-from-cal" class="viral-date-cal-input" />
+              </label>
+              <label class="viral-date-cal-field">
+                <span class="viral-date-cal-label">To</span>
+                <input type="date" id="viral-date-to-cal" class="viral-date-cal-input" />
+              </label>
             </div>
-            <div class="viral-date-dual-slider" role="group" aria-label="Date range">
+            <div class="viral-date-dual-slider" role="group" aria-label="Date range sliders">
               <input type="range" id="viral-date-from" min="0" max="0" value="0" aria-label="From date" />
               <input type="range" id="viral-date-to" min="0" max="0" value="0" aria-label="To date" />
             </div>
-            <label class="viral-show-line-toggle">
-              <input type="checkbox" id="viral-show-line" class="viral-toggle-input" aria-describedby="viral-show-line-desc" />
-              <span class="viral-toggle-track" aria-hidden="true"></span>
-              <span id="viral-show-line-desc" class="viral-toggle-label">Show line between points</span>
-            </label>
+            <div class="viral-chart-toggles">
+              <label class="viral-show-line-toggle">
+                <input type="checkbox" id="viral-show-line" class="viral-toggle-input" aria-describedby="viral-show-line-desc" />
+                <span class="viral-toggle-track" aria-hidden="true"></span>
+                <span id="viral-show-line-desc" class="viral-toggle-label">Show line between points</span>
+              </label>
+              <label class="viral-show-line-toggle">
+                <input type="checkbox" id="viral-loess-full-series" class="viral-toggle-input" aria-describedby="viral-loess-full-desc" checked />
+                <span class="viral-toggle-track" aria-hidden="true"></span>
+                <span id="viral-loess-full-desc" class="viral-toggle-label">Full-series LOESS</span>
+              </label>
+            </div>
           </div>
+          <p class="explore-subtitle viral-load-smoothing-note">
+            The gray dashed trend line is LOESS-smoothed (polynomial degree 2, span 0.2). <br> </bbr>By default it fits across all data matching your filters. Turn off Full-series LOESS to smooth only across the visible date window.
+          </p>
+          <p id="viral-all-filter-warning" class="viral-all-filter-warning explore-subtitle" hidden aria-live="polite"></p>
           <div id="viral-load-chart" class="viral-load-chart"></div>
         </div>
       </section>
