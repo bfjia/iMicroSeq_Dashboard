@@ -1,47 +1,3 @@
-const DATA_BASE = '/data';
-
-/** Decompress gzip JSON produced by scripts (write_json_gz) */
-async function fetchJsonGz(url) {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Failed to load ${url}`);
-  }
-  const body = res.body;
-  if (!body) throw new Error('No response body');
-  const decompressed = new Response(body.pipeThrough(new DecompressionStream('gzip')));
-  const text = await decompressed.text();
-  return JSON.parse(text);
-}
-
-/** Index page: gzip-compressed JSON shards (built from data/imicroseq.csv.xz) */
-const INDEX_DATA_URLS = {
-  hero: `${DATA_BASE}/index_hero_stats.json.gz`,
-  growth: `${DATA_BASE}/index_growth_per_year.json.gz`,
-  breakdown: `${DATA_BASE}/index_environmental_breakdown.json.gz`,
-  coverage: `${DATA_BASE}/index_sample_coverage_map.json.gz`,
-};
-
-const DASHBOARD_SAMPLE_URL = `${DATA_BASE}/dashboard_sample_breakdown.json.gz`;
-
-/** Load index page chart + summary payloads in parallel */
-async function fetchIndexPageData() {
-  const [hero, growthJ, breakdownJ, coverageJ] = await Promise.all([
-    fetchJsonGz(INDEX_DATA_URLS.hero),
-    fetchJsonGz(INDEX_DATA_URLS.growth),
-    fetchJsonGz(INDEX_DATA_URLS.breakdown),
-    fetchJsonGz(INDEX_DATA_URLS.coverage),
-  ]);
-  return {
-    summary: hero.summary,
-    growth: growthJ.growth,
-    breakdown: breakdownJ.breakdown,
-    coveragePoints: coverageJ.coveragePoints,
-  };
-}
-
-async function fetchDashboardSampleData() {
-  return fetchJsonGz(DASHBOARD_SAMPLE_URL);
-}
 
 // Format large numbers as K/M for summary cards
 function formatNumber(value) {
@@ -549,8 +505,7 @@ function initSampleChart(data) {
   return updateSampleChart();
 }
 
-// ——— Viral Loads: dashboard_viral_loads.json.gz (8-level nested, leaf = date -> [values]) ———
-const QUANT_DATA_URL = `${DATA_BASE}/dashboard_viral_loads.json.gz`;
+// ——— Viral Loads: 8-level nested structure (Province→City→Site→Assay→Organism→Gene→Unit→Date→values) ———
 const TREND_LEGEND_LABEL = 'Trend';
 
 /** Target taxonomic name in nested JSON; "(blank)" is treated as this organism when filtering. */
@@ -580,39 +535,6 @@ function normalizeOrganismOptionsForSelect(keys) {
   return filtered.sort();
 }
 
-async function fetchQuantData() {
-  const data = await fetchJsonGz(QUANT_DATA_URL);
-  // Debug: print structure (provinces and one sample leaf)
-  const provinces = Object.keys(data);
-  console.log('[Viral Load] Quant data loaded:', {
-    topLevelKeys: provinces,
-    topLevelKeyCount: provinces.length,
-    samplePath: provinces[0]
-    ? (() => {
-        let o = data[provinces[0]];
-        const path = [provinces[0]];
-        for (let d = 0; d < 6 && o && typeof o === 'object' && !Array.isArray(o); d++) {
-          const k = Object.keys(o)[0];
-          path.push(k);
-          o = o[k];
-        }
-        if (o && typeof o === 'object' && !Array.isArray(o)) {
-          const dateKey = Object.keys(o)[0];
-          path.push(dateKey);
-          const leaf = o[dateKey];
-          path.push(typeof leaf, Array.isArray(leaf) ? 'array' : (leaf && typeof leaf === 'object' ? 'object(' + Object.keys(leaf).length + ' keys)' : String(leaf)));
-        }
-        return path;
-      })()
-    : 'no provinces'
-  });
-  console.log('[Viral Load] Full quant data (first 2 levels):', JSON.stringify(
-    provinces.length ? { [provinces[0]]: Object.keys(data[provinces[0]] || {}) } : {},
-    null,
-    2
-  ));
-  return data;
-}
 
 /** Nested quant: level 0=Province … level 6=Unit, 7=date -> [value strings] */
 function getViralLoadOptionsAtLevel(nested, level, selections) {
@@ -1187,7 +1109,7 @@ function initViralLoadChart() {
     updateChart();
   };
 
-  return fetchQuantData()
+  return fetchViralLoadsData()
     .then((data) => {
       quantData = data;
       const provinceOpts = getViralLoadOptionsAtLevel(data, 0, {});
@@ -1275,7 +1197,7 @@ function attachLazyChartObserver(data, options) {
 
 /** Home / At a Glance: hero stats + three chart shards */
 async function initIndexPage() {
-  const data = await fetchIndexPageData();
+  const data = await fetchIndexData();
   populateSummary(data.summary);
   hideLoadingOverlay();
   attachLazyChartObserver(data, {
@@ -1286,7 +1208,7 @@ async function initIndexPage() {
 
 /** Interactive dashboard: sample breakdown + viral loads only */
 async function initDashboardPage() {
-  const data = await fetchDashboardSampleData();
+  const data = await fetchSampleBreakdownData();
   hideLoadingOverlay();
   attachLazyChartObserver(data, {
     includeIndexCharts: false,

@@ -22,7 +22,7 @@
     "node": ">=18.0.0"
   },
   "devDependencies": {
-    "wrangler": "^4.61.0"
+    "wrangler": "^4.100.0"
   },
   "dependencies": {
     "xz-decompress": "^0.2.3"

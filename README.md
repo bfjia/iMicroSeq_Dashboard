@@ -1,6 +1,6 @@
 # iMicroSeq Dashboard
 
-Proof-of-concept web dashboard for the [Canadian iMicroSeq Data Portal](https://imicroseq-dataportal.ca/). It summarizes environmental sequencing data with summary cards, Vega-Lite charts, and an interactive sample coverage map, and links out to the full portal explorer.
+Proof-of-concept web dashboard for the [Canadian iMicroSeq Data Portal](https://imicroseq-dataportal.ca/). It summarizes environmental sequencing data with summary cards, charts, and an interactive sample coverage map, and other interactive plots.
 
 **Live site:** [dashboard.imicroseq-dataportal.ca](https://dashboard.imicroseq-dataportal.ca)
 
@@ -98,8 +98,3 @@ The Worker serves static assets from `public/`; no application server is require
 - **Charts:** [Vega](https://vega.github.io/vega/) / [Vega-Lite](https://vega.github.io/vega-lite/) via CDN
 - **Map:** [Leaflet](https://leafletjs.com/) (index page coverage map)
 - **Hosting:** [Cloudflare Workers](https://developers.cloudflare.com/workers/) + Workers Assets
-- **Client compression:** browser `DecompressionStream` for gzip JSON
-
-## License
-
-MIT
