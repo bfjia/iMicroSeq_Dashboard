@@ -19,7 +19,7 @@ Both pages share `public/styles.css` and `public/app.js`. Chart data is loaded f
 public/                 Static site (HTML, CSS, JS, images)
   app.js                Fetches /data/*.json.gz, renders Vega-Lite & Leaflet
   data/                 Generated JSON (gzip) + static geo assets
-cf-worker/              Cloudflare Worker (serves `public/` as assets)
+cf-worker/              Cloudflare Worker (serves `public/` as assets, proxies CARTO map tiles)
 scripts/                Python builders + update_website_data.sh
   lib/imicroseq_common.py
 data/                   Source export (not committed): imicroseq.csv.xz
@@ -47,7 +47,15 @@ wrangler.toml           Worker name, routes, assets binding
    bash scripts/update_website_data.sh
    ```
 
-4. Start the dev server (serves `public/` via the Worker):
+4. Add the CARTO basemap API key for local dev. Create `.dev.vars` in the repo root (it is gitignored):
+
+   ```
+   CARTO_API_KEY=your-key-here
+   ```
+
+   The map loads tiles from the Worker's `/tiles/...` route, which adds the key server-side so it never reaches the browser.
+
+5. Start the dev server (serves `public/` via the Worker):
 
    ```bash
    npm run dev
@@ -84,6 +92,12 @@ Static geo files (`CAN.geo.json`, `ProvinceCapitalCoords.csv`) live in `public/d
 Optional R smoothing utilities for viral-load processing are under `scripts/smoothing/`.
 
 ## Deployment
+
+Store the CARTO basemap API key as a Worker secret (once, or whenever the key changes):
+
+```bash
+npx wrangler secret put CARTO_API_KEY
+```
 
 Deploy to Cloudflare Workers (custom domain configured in `wrangler.toml`):
 

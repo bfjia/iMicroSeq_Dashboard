@@ -172,8 +172,8 @@ function initLeafletMap(container, points) {
   if (!container || typeof L === 'undefined') return;
   container.innerHTML = '';
   const map = L.map(container, { scrollWheelZoom: true }).setView([62.5, -96], 3);
-  // CARTO light basemap
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  // CARTO light basemap, loaded through the Worker's /tiles proxy so the API key stays server-side
+  L.tileLayer('/tiles/light_all/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; <a href="https://carto.com/">CARTO</a>', 
     maxZoom: 19
   }).addTo(map);

@@ -147,3 +147,7 @@ CLAUDE.md
 data_specification
 query_examples
 .wrangler
+
+# Wrangler local secrets (CARTO_API_KEY)
+.dev.vars
+.dev.vars.*
