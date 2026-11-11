@@ -7,13 +7,13 @@ Proof-of-concept dashboard for the [Canadian iMicroSeq Data Portal](https://imic
 
 ## How it works
 
-Everything runs on Cloudflare Workers' free tier. The pages are static files; charts query the portal's GraphQL API **live** through a small Worker route that caches identical queries at the edge for an hour. Viral loads are the one exception: their values can't be averaged by the API, so a GitHub Action rebuilds small per-site data files every night and deploys them with the site.
+Everything runs on Cloudflare Workers' free tier. The pages are static files; charts query the portal's GraphQL API **live** through a small Worker route that caches identical queries at the edge for an hour. Viral loads are the one exception: their values can't be averaged by the API, so Cloudflare Workers Builds rebuilds small per-site data files on every push to `main` and every night, and deploys them with the site.
 
 ```
 Browser ── pages, JS, viral data files ──► Cloudflare static assets
    ├── /api/graphql ──► Worker ──► edge cache (1 h) ──► portal GraphQL API
    └── /tiles/...   ──► Worker ──► CARTO basemap (API key stays server-side)
-GitHub Actions (nightly) ── build viral data ──► wrangler deploy
+Workers Builds (push to main, nightly) ── build viral data ──► wrangler deploy
 ```
 
 ## Start here

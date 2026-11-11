@@ -5,7 +5,7 @@ Proof-of-concept dashboard for the [Canadian iMicroSeq Data Portal](https://imic
 ## Hard constraints
 
 - Hosting is **Cloudflare Workers free tier**. No paid features (KV/D1/R2 not used; Cache API only).
-- Data is fetched **live** from the portal GraphQL API wherever possible. Only viral loads are precomputed (nightly GitHub Action), because measurement values are text and can't be aggregated by the API.
+- Data is fetched **live** from the portal GraphQL API wherever possible. Only viral loads are precomputed (Cloudflare Workers Builds, on push to main and nightly via the Worker cron and a deploy hook), because measurement values are text and can't be aggregated by the API.
 - No domain names in code: all paths are relative. Domains live only in `wrangler.toml`.
 - Keep every existing disclaimer text on the pages word-for-word.
 - Code style: plain, minimal ("caveman") vanilla JS ES modules. No framework, no bundler, no new runtime dependencies.
@@ -14,7 +14,7 @@ Proof-of-concept dashboard for the [Canadian iMicroSeq Data Portal](https://imic
 
 | Path | Purpose |
 |---|---|
-| `cf-worker/index.ts` | Worker: `POST /api/graphql` cached proxy, `/tiles/...` CARTO proxy; all else static |
+| `cf-worker/index.ts` | Worker: `POST /api/graphql` cached proxy, `/tiles/...` CARTO proxy, nightly cron that calls `DEPLOY_HOOK_URL`; all else static |
 | `public/js/config.js` | Every tunable (fields, labels, colours, thresholds, API URLs) |
 | `public/js/rules.js` | Data rules shared by browser and nightly build |
 | `public/js/api.js` | `gql()` (proxy, then direct fallback), SQON helpers, `aliased()` multi-block queries |
@@ -22,7 +22,6 @@ Proof-of-concept dashboard for the [Canadian iMicroSeq Data Portal](https://imic
 | `public/js/index.js`, `public/js/map.js` | At a Glance page |
 | `public/js/dashboard.js`, `public/js/viral.js` | Interactive Dashboard page |
 | `scripts/build-viral-loads.mjs` | Nightly build of `public/data/viral/` (gitignored) |
-| `.github/workflows/deploy.yml` | Nightly + push-to-main build and deploy |
 | `test/` | `node:test` unit tests, including a docs path check |
 
 ## Commands
@@ -31,7 +30,8 @@ Proof-of-concept dashboard for the [Canadian iMicroSeq Data Portal](https://imic
 npm run dev          # wrangler dev (restart it after adding files: file watching doesn't work on /mnt/d)
 npm test
 npm run build:data   # ~10 min, fetches all RT-PCR records
-npm run cf:deploy    # build + deploy to staging; never run --env production from this repo
+npm run build        # test + build:data; the Workers Builds build command
+npm run cf:deploy    # emergency manual deploy to staging; never run --env production from this repo
 ```
 
 ## Arranger API quirks
