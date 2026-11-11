@@ -1,12 +1,20 @@
-name = "dashboard-imicroseq-dataportal-ca"
+# Staging: this repo deploys to imicroseq-dashboard.bfjia.net.
+# Production (dashboard.imicroseq-dataportal.ca) deploys from the production repo with --env production.
+name = "imicroseq-dashboard"
 main = "cf-worker/index.ts"
-compatibility_date = "2025-01-01"
-compatibility_flags = ["nodejs_compat"]
-
-routes = [
-  { pattern = "dashboard.imicroseq-dataportal.ca", zone_name = "imicroseq-dataportal.ca", custom_domain = true }
-]
+compatibility_date = "2026-11-01"
+routes = [{ pattern = "imicroseq-dashboard.bfjia.net", custom_domain = true }]
 
 [assets]
 directory = "./public"
 binding = "ASSETS"
+# Only these paths run the Worker. Everything else is a free static-asset request.
+run_worker_first = ["/api/*", "/tiles/*"]
+
+[observability]
+enabled = true
+
+[env.production]
+# Same name as the Worker that serves the production domain today, so cutover deploys over it in place.
+name = "dashboard-imicroseq-dataportal-ca"
+routes = [{ pattern = "dashboard.imicroseq-dataportal.ca", custom_domain = true }]

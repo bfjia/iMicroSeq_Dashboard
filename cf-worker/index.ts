@@ -1,34 +1,81 @@
-// Cloudflare Worker entry: proxies CARTO map tiles and serves static assets from public/
+// Cloudflare Worker. Two jobs, everything else is static assets from public/:
+//   POST /api/graphql  -> portal GraphQL API, responses edge-cached for an hour
+//   GET  /tiles/...    -> CARTO map tiles, API key added here so it never reaches the browser
 
-/** Worker bindings */
 export interface Env {
-  /** Static asset fetcher (public folder) */
-  ASSETS: {
-    fetch(input: RequestInfo, init?: RequestInit): Promise<Response>;
-  };
-  /** CARTO basemaps API key. Stored as a Worker secret so it never reaches the browser or git. */
+  ASSETS: { fetch(input: RequestInfo, init?: RequestInit): Promise<Response> };
   CARTO_API_KEY?: string;
 }
 
-// Map tiles requested by Leaflet: /tiles/light_all/{z}/{x}/{y}.png (or {y}@2x.png on retina screens)
+interface Ctx {
+  waitUntil(p: Promise<unknown>): void;
+}
+
+const ARRANGER = 'https://arranger-environmental.imicroseq-dataportal.ca/graphql';
+const CACHE_SECONDS = 3600;
+const MAX_BODY = 64 * 1024;
+
 const TILE_PATH = /^\/tiles\/light_all\/(\d{1,2})\/(\d{1,7})\/(\d{1,7})(@2x)?\.png$/;
 const MAX_ZOOM = 20;
 
-// Fetch a tile from CARTO with the API key added server-side
-async function fetchTile(match: RegExpMatchArray, env: Env): Promise<Response> {
+// ─── GraphQL proxy ───────────────────────────────────────────────────────────
+
+async function sha256(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function graphql(request: Request, ctx: Ctx): Promise<Response> {
+  if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
+  const body = await request.text();
+  if (body.length > MAX_BODY) return new Response('Query too large', { status: 413 });
+  if (/\bmutation\b/i.test(body)) return new Response('Read-only', { status: 400 });
+
+  // Cache API only stores GET, so key the POST body as a GET URL on our own host.
+  const origin = new URL(request.url).origin;
+  const key = new Request(`${origin}/__cache/graphql/${await sha256(body)}`);
+  const cache = (caches as unknown as { default: Cache }).default;
+
+  const hit = await cache.match(key);
+  if (hit) {
+    const res = new Response(hit.body, hit);
+    res.headers.set('x-cache', 'HIT');
+    return res;
+  }
+
+  const upstream = await fetch(ARRANGER, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  });
+  const text = await upstream.text();
+  const ok = upstream.ok && !text.includes('"errors":');
+  const res = new Response(text, {
+    status: upstream.status,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': ok ? `public, max-age=${CACHE_SECONDS}` : 'no-store',
+      'x-fetched-at': new Date().toISOString(),
+      'x-cache': 'MISS',
+    },
+  });
+  if (ok) ctx.waitUntil(cache.put(key, res.clone()));
+  return res;
+}
+
+// ─── Map tiles ───────────────────────────────────────────────────────────────
+
+async function tile(match: RegExpMatchArray, env: Env): Promise<Response> {
   const [, zs, xs, ys, retina = ''] = match;
   const z = Number(zs);
   const x = Number(xs);
   const y = Number(ys);
-  const tilesPerSide = 2 ** z;
-  if (z > MAX_ZOOM || x >= tilesPerSide || y >= tilesPerSide) {
-    return new Response('Not found', { status: 404 });
-  }
+  const side = 2 ** z;
+  if (z > MAX_ZOOM || x >= side || y >= side) return new Response('Not found', { status: 404 });
   if (!env.CARTO_API_KEY) {
     console.error('CARTO_API_KEY secret is not set');
     return new Response('Map tiles are not configured', { status: 503 });
   }
-
   const url =
     `https://basemaps.cartocdn.com/light_all/${z}/${x}/${y}${retina}.png` +
     `?key=${encodeURIComponent(env.CARTO_API_KEY)}`;
@@ -36,28 +83,25 @@ async function fetchTile(match: RegExpMatchArray, env: Env): Promise<Response> {
   const upstream = await fetch(url, {
     cf: { cacheTtlByStatus: { '200-299': 604800, '400-599': 0 } },
   } as RequestInit);
-
-  // Pass on only the headers the browser needs
-  const headers = new Headers({
-    'Content-Type': upstream.headers.get('Content-Type') ?? 'image/png',
-    'Cache-Control': upstream.ok ? 'public, max-age=86400' : 'no-store',
+  return new Response(upstream.body, {
+    status: upstream.status,
+    headers: {
+      'Content-Type': upstream.headers.get('Content-Type') ?? 'image/png',
+      'Cache-Control': upstream.ok ? 'public, max-age=86400' : 'no-store',
+    },
   });
-  return new Response(upstream.body, { status: upstream.status, headers });
 }
 
 export default {
-  async fetch(
-    request: Request,
-    env: Env,
-    _ctx: unknown
-  ): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: Ctx): Promise<Response> {
     const { pathname } = new URL(request.url);
+    if (pathname === '/api/graphql') return graphql(request, ctx);
     if (pathname.startsWith('/tiles/')) {
       if (request.method !== 'GET' && request.method !== 'HEAD') {
         return new Response('Method not allowed', { status: 405 });
       }
       const match = pathname.match(TILE_PATH);
-      return match ? fetchTile(match, env) : new Response('Not found', { status: 404 });
+      return match ? tile(match, env) : new Response('Not found', { status: 404 });
     }
     return env.ASSETS.fetch(request);
   },
