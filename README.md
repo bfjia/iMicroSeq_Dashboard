@@ -1,114 +1,38 @@
 # iMicroSeq Dashboard
 
-Proof-of-concept web dashboard for the [Canadian iMicroSeq Data Portal](https://imicroseq-dataportal.ca/). It summarizes environmental sequencing data with summary cards, charts, and an interactive sample coverage map, and other interactive plots.
+Proof-of-concept dashboard for the [Canadian iMicroSeq Data Portal](https://imicroseq-dataportal.ca/): summary numbers, sampling activity, a site map, a sample explorer, metadata completeness and wastewater viral-load trends.
 
-**Live site:** [dashboard.imicroseq-dataportal.ca](https://dashboard.imicroseq-dataportal.ca)
+- **Staging:** [imicroseq-dashboard.bfjia.net](https://imicroseq-dashboard.bfjia.net) (this repo)
+- **Production:** [dashboard.imicroseq-dataportal.ca](https://dashboard.imicroseq-dataportal.ca) (production repo, after cutover)
 
-## Pages
+## How it works
 
-| Page | File | Description |
-|------|------|-------------|
-| At a Glance | `public/index.html` | Hero stats, growth chart, environmental breakdown, Canada coverage map |
-| Interactive Dashboard | `public/dashboard.html` | Deeper charts (sample breakdown, viral loads, and related views) |
-
-Both pages share `public/styles.css` and `public/app.js`. Chart data is loaded from gzip-compressed JSON under `public/data/`.
-
-## Project structure
+Everything runs on Cloudflare Workers' free tier. The pages are static files; charts query the portal's GraphQL API **live** through a small Worker route that caches identical queries at the edge for an hour. Viral loads are the one exception: their values can't be averaged by the API, so a GitHub Action rebuilds small per-site data files every night and deploys them with the site.
 
 ```
-public/                 Static site (HTML, CSS, JS, images)
-  app.js                Fetches /data/*.json.gz, renders Vega-Lite & Leaflet
-  data/                 Generated JSON (gzip) + static geo assets
-cf-worker/              Cloudflare Worker (serves `public/` as assets, proxies CARTO map tiles)
-scripts/                Python builders + update_website_data.sh
-  lib/imicroseq_common.py
-data/                   Source export (not committed): imicroseq.csv.xz
-wrangler.toml           Worker name, routes, assets binding
+Browser ── pages, JS, viral data files ──► Cloudflare static assets
+   ├── /api/graphql ──► Worker ──► edge cache (1 h) ──► portal GraphQL API
+   └── /tiles/...   ──► Worker ──► CARTO basemap (API key stays server-side)
+GitHub Actions (nightly) ── build viral data ──► wrangler deploy
 ```
 
-## Prerequisites
+## Start here
 
-- **Node.js** 18+ (for Wrangler local dev and deploy)
-- **Python 3** (to regenerate chart data from the portal export)
+| You want to… | Read |
+|---|---|
+| Set up, run, publish, use or look after the site (no development background needed) | [docs/SOP.md](docs/SOP.md) |
+| Understand the code, data flow and data rules | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| Change a label, field, colour or threshold | `public/js/config.js` (see [docs/SOP.md](docs/SOP.md), "Common changes") |
 
-## Local development
-
-1. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-2. Place the portal CSV export at `data/imicroseq.csv.xz` (see [Updating data](#updating-data)).
-
-3. Regenerate JSON assets (if you have the source file):
-
-   ```bash
-   bash scripts/update_website_data.sh
-   ```
-
-4. Add the CARTO basemap API key for local dev. Create `.dev.vars` in the repo root (it is gitignored):
-
-   ```
-   CARTO_API_KEY=your-key-here
-   ```
-
-   The map loads tiles from the Worker's `/tiles/...` route, which adds the key server-side so it never reaches the browser.
-
-5. Start the dev server (serves `public/` via the Worker):
-
-   ```bash
-   npm run dev
-   ```
-
-   Wrangler prints a local URL (typically `http://localhost:8787`). Open `index.html` or `dashboard.html` from that origin so `/data/*.json.gz` paths resolve correctly.
-
-## Updating data
-
-Chart and summary payloads are built from a single compressed export:
-
-- **Input:** `data/imicroseq.csv.xz`
-- **Output:** gzip JSON files in `public/data/`
-
-Run all builders in one step:
+## Quick start
 
 ```bash
-bash scripts/update_website_data.sh
+nvm use            # Node 24 (see .nvmrc)
+npm install
+npm run dev        # http://localhost:8787
+npm test
 ```
 
-Individual scripts (run from repo root with `python3`):
+## License
 
-| Script | Output |
-|--------|--------|
-| `scripts/build_index_hero_stats.py` | `index_hero_stats.json.gz` |
-| `scripts/build_index_growth_per_year.py` | `index_growth_per_year.json.gz` |
-| `scripts/build_index_environmental_breakdown.py` | `index_environmental_breakdown.json.gz` |
-| `scripts/build_index_sample_coverage_map.py` | `index_sample_coverage_map.json.gz` |
-| `scripts/build_dashboard_sample_breakdown.py` | `dashboard_sample_breakdown.json.gz` |
-| `scripts/build_dashboard_viral_loads.py` | `dashboard_viral_loads.json.gz` |
-
-Static geo files (`CAN.geo.json`, `ProvinceCapitalCoords.csv`) live in `public/data/` and are not regenerated by these scripts.
-
-Optional R smoothing utilities for viral-load processing are under `scripts/smoothing/`.
-
-## Deployment
-
-Store the CARTO basemap API key as a Worker secret (once, or whenever the key changes):
-
-```bash
-npx wrangler secret put CARTO_API_KEY
-```
-
-Deploy to Cloudflare Workers (custom domain configured in `wrangler.toml`):
-
-```bash
-npm run cf:deploy
-```
-
-The Worker serves static assets from `public/`; no application server is required beyond Cloudflare’s edge.
-
-## Tech stack
-
-- **Charts:** [Vega](https://vega.github.io/vega/) / [Vega-Lite](https://vega.github.io/vega-lite/) via CDN
-- **Map:** [Leaflet](https://leafletjs.com/) (index page coverage map)
-- **Hosting:** [Cloudflare Workers](https://developers.cloudflare.com/workers/) + Workers Assets
+MIT, see [LICENSE](LICENSE).

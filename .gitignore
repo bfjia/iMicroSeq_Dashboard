@@ -154,3 +154,7 @@ query_examples
 
 # Built nightly by scripts/build-viral-loads.mjs, never committed
 public/data/viral/
+
+# Python bytecode
+__pycache__/
+*.pyc
