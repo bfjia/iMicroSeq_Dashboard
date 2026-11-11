@@ -151,3 +151,6 @@ query_examples
 # Wrangler local secrets (CARTO_API_KEY)
 .dev.vars
 .dev.vars.*
+
+# Built nightly by scripts/build-viral-loads.mjs, never committed
+public/data/viral/
