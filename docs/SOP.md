@@ -13,11 +13,7 @@ Once only.
 3. **Download the project.** `git clone https://github.com/bfjia/iMicroSeq_Dashboard.git`, then `cd iMicroSeq_Dashboard`, then `git checkout dev`.
 4. **Install its software.** `npm install`. No red errors should appear.
 5. **Add the map key.** Create a file `.dev.vars` in the project folder with one line: `CARTO_API_KEY=<paste the key>`. It is never uploaded.
-6. **Let GitHub deploy.**
-   1. Cloudflare: profile icon, My Profile, API Tokens, Create Token, "Edit Cloudflare Workers" template, Use template, Continue to summary, Create Token. Copy the token (shown once).
-   2. Copy your Account ID (Workers & Pages overview, right-hand side).
-   3. GitHub repo: Settings, Secrets and variables, Actions, New repository secret. Add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
-   4. Store the map key on the Worker: `npx wrangler secret put CARTO_API_KEY`, paste the key. A browser window asks you to log in to Cloudflare the first time.
+6. **First deploy:** section 3.
 
 ## 2. Run locally
 
@@ -29,7 +25,24 @@ Viral loads stay empty until you run `npm run build:data` (about 10 minutes; end
 
 Before publishing run `npm test` (expect `fail 0`).
 
-## 3. Publish a change
+## 3. Deploy and publish
+
+GitHub deploys the site whenever `main` changes, and again every night. You do not deploy from your computer. This repo deploys the staging site `https://imicroseq-dashboard.bfjia.net`. Production: section 9.
+
+### First deploy (once)
+
+1. **Check the domain.** Cloudflare dashboard, account home: `bfjia.net` must be in the domain list of the account you will deploy to. If it is not, stop: that account cannot use the address.
+2. **Create a deploy token.** Profile icon, My Profile, API Tokens, Create Token, "Edit Cloudflare Workers" template, Use template. Account Resources: this account. Zone Resources: `bfjia.net` (or All zones). Continue to summary, Create Token. Copy the token now; it is shown once.
+3. **Copy the Account ID.** Workers & Pages overview, right-hand side.
+4. **Give both to GitHub.** Repo, Settings, Secrets and variables, Actions, Secrets tab, New repository secret. Name `CLOUDFLARE_API_TOKEN`, paste the token, Add secret. Repeat with `CLOUDFLARE_ACCOUNT_ID`. On the Variables tab there must be no `WRANGLER_ENV` (or it is empty).
+5. **Merge `dev` into `main`** (steps 2 and 3 of "Publish a change" below). The merge starts the deploy.
+6. **Watch it.** Actions tab, "Build and deploy": yellow = running (10 to 15 minutes), green tick = live. Red: section 7.
+7. **Store the map key on the Worker.** Only possible after step 6 (the Worker exists only after its first deploy). In the project folder:
+   1. `npx wrangler login`. A browser opens; click Allow. If none opens, copy the link it prints into a browser.
+   2. `npx wrangler secret put CARTO_API_KEY --env=""`. Paste the key, press Enter. It should end with "Success". It works at once; no redeploy.
+8. **Check the site.** Open `https://imicroseq-dashboard.bfjia.net` (the first time, the address can take a few minutes to start working). Hero numbers appear, the map shows streets, and the Interactive Dashboard footer shows "Viral loads as of <today>".
+
+### Publish a change
 
 1. `git add -A`, `git commit -m "Describe the change"`, `git push origin dev`.
 2. GitHub: Pull requests, New pull request, base `main`, compare `dev`, Create pull request.
@@ -40,6 +53,8 @@ Before publishing run `npm test` (expect `fail 0`).
 Deploy without a change: Actions tab, Build and deploy, Run workflow, branch `main`.
 
 Roll back: open the merged PR on GitHub, click Revert, merge the new PR. Alternatively re-run an older green run (Re-run all jobs); this rebuilds viral data from today.
+
+Emergency only, if GitHub Actions is down: `npm run cf:deploy` from your computer (after `npx wrangler login`) builds and deploys staging in about 10 minutes.
 
 ## 4. Using the dashboard
 
@@ -70,7 +85,7 @@ Monthly:
 
 Every three months: `npm install -D wrangler@latest`, `npm test`, publish (section 3). Check the pinned chart library versions in `public/index.html` and `public/dashboard.html`.
 
-Rotate a key: map key, get a new one from CARTO, run `npx wrangler secret put CARTO_API_KEY`, update `.dev.vars`. Cloudflare token, create a new one (section 1, step 6), replace the GitHub secret, delete the old token.
+Rotate a key: map key, get a new one from CARTO, run `npx wrangler secret put CARTO_API_KEY --env=""`, update `.dev.vars`. Cloudflare token, create a new one (section 3, first deploy, step 2), replace the GitHub secret, delete the old token.
 
 If the portal adds or renames fields: update the names in `public/js/config.js` (section 6), preview, publish.
 
@@ -92,11 +107,10 @@ In `public/js/config.js`. Then preview (section 2), `npm test`, publish (section
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| Map blank, tiles 503 | `CARTO_API_KEY` missing on the Worker | `npx wrangler secret put CARTO_API_KEY` |
-| Panel says "Could not load this from the data portal" | Portal API down, or ad blocker | Disable ad blockers, click Try again, check the portal |
+| Map blank, tiles 503 | `CARTO_API_KEY` missing on the Worker | `npx wrangler secret put CARTO_API_KEY --env=""` || Panel says "Could not load this from the data portal" | Portal API down, or ad blocker | Disable ad blockers, click Try again, check the portal |
 | Viral data is old | Nightly workflow failing | Actions tab: open the latest red run, read the failing step |
 | Red at "Build viral-load files" | Portal API changed, or row count mismatch | Re-run all jobs once. If it repeats, send the log to the developer. The site keeps the last good data. |
-| Red at "Deploy to Cloudflare" | Token, account ID or domain | Check both secrets; the domain's zone must be in the token's Cloudflare account |
+| Red at "Deploy to Cloudflare" | Token, account ID or domain | Check both secrets. `bfjia.net` must be in that Cloudflare account and in the token's Zone Resources (section 3, first deploy, steps 1 and 2) |
 | Numbers look odd | Data issue | Compare with the [data portal](https://portal-ui.imicroseq-dataportal.ca/explorer/environmental) |
 | Local 404 on a new file | Server started before the file existed | Ctrl+C, `npm run dev` |
 
