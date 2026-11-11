@@ -5,104 +5,112 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>iMicroSeq Data Dashboard</title>
     <link rel="stylesheet" href="styles.css" />
-    <!-- Leaflet for coverage map -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-    <!-- Vega/Vega-Lite for charts -->
     <script src="https://cdn.jsdelivr.net/npm/vega@6.2.0/build/vega.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-lite@6.4.2/build/vega-lite.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@7.1.0/build/vega-embed.min.js"></script>
+    <script type="module" src="js/index.js"></script>
   </head>
   <body>
-    <!-- Sticky header: logo (links to iMicroSeq portal) + nav -->
     <header class="site-header">
       <div class="header-logo-area">
         <div class="header-logo-panel">
-          <a href="https://imicroseq-dataportal.ca/"><img src="./img/imicroseq-logo.png" alt="iMicroSeq" class="header-logo-img" /></a>
+          <a href="https://imicroseq-dataportal.ca/"><img src="img/imicroseq-logo.png" alt="iMicroSeq Data Portal" class="header-logo-img" /></a>
         </div>
       </div>
-      <nav class="header-nav">
+      <nav class="header-nav" aria-label="Main">
         <span class="header-poc-notice">This dashboard is for proof-of-concept demonstration purposes only.</span>
-        <a href="#" class="header-link">Home<span class="header-chevron" aria-hidden="true">▼</span></a>
+        <a href="./" class="header-link" aria-current="page">At a Glance</a>
+        <a href="dashboard.html" class="header-link">Interactive Dashboard</a>
+        <a href="https://portal-ui.imicroseq-dataportal.ca/explorer/environmental" class="header-link">Data Portal ↗</a>
       </nav>
     </header>
 
-    <div id="loading-overlay" class="loading-overlay" aria-hidden="false" aria-busy="true" aria-live="polite">
-      <div class="loading-content">
-        <div class="loading-spinner" aria-hidden="true"></div>
-        <p class="loading-text">Loading dashboard…</p>
-      </div>
-    </div>
-
     <main class="page">
-      <!-- Page title: logo (parallelogram) + At a Glance + star + subtitle -->
       <header class="page-title">
         <div class="page-title-logo">
-          <img src="./img/imicroseq-logo.png" alt="iMicroSeq" class="page-title-logo-img" />
+          <img src="img/imicroseq-logo.png" alt="" class="page-title-logo-img" />
         </div>
         <h1 class="page-title-text">At a Glance:</h1>
         <h1 class="page-title-text">The Canadian iMicroSeq Data Portal</h1>
-
       </header>
-      <!-- Summary cards: records, sites, organisms, data sources (populated by app.js) -->
-      <section class="hero-cards lazy-section">
+
+      <!-- Hero cards (filled by js/index.js) -->
+      <section class="hero-cards" id="hero" aria-live="polite">
         <article class="hero-card">
           <div class="hero-label">Samples</div>
-          <div class="hero-value" id="records-count">–</div>
+          <div class="hero-value" id="hero-samples">–</div>
           <div class="hero-subtext">Environmental Samples</div>
         </article>
         <article class="hero-card">
           <div class="hero-label">Sites</div>
-          <div class="hero-value" id="countries-count">–</div>
+          <div class="hero-value" id="hero-sites">–</div>
           <div class="hero-subtext">Sampling Sites</div>
         </article>
         <article class="hero-card">
+          <div class="hero-label">Active Sites</div>
+          <div class="hero-value" id="hero-active">–</div>
+          <div class="hero-subtext">Sampled in the Last 12 Months</div>
+        </article>
+        <article class="hero-card">
           <div class="hero-label">Organisms</div>
-          <div class="hero-value" id="organism-count">–</div>
-          <div class="hero-subtext">Species Detected, Plus Metagenomic Samples</div>
+          <div class="hero-value" id="hero-organisms">–</div>
+          <div class="hero-subtext">Species Detected,<br>Plus Metagenomic Samples</div>
         </article>
         <article class="hero-card">
           <div class="hero-label">Data Sources</div>
-          <div class="hero-value" id="data-sources">–</div>
+          <div class="hero-value" id="hero-sources">–</div>
           <div class="hero-subtext">Organisations Collecting Samples</div>
         </article>
+        <article class="hero-card">
+          <div class="hero-label">Latest Sample</div>
+          <div class="hero-value hero-value-date" id="hero-latest">–</div>
+          <div class="hero-subtext">Most Recent Collection Date</div>
+        </article>
+      </section>
+      <p class="hero-error" id="hero-error" hidden></p>
+
+      <section class="panel panel-wide" id="activity">
+        <header class="panel-header panel-header-split">
+          <h2>Sampling Activity</h2>
+          <div class="segmented" role="group" aria-label="Show as">
+            <button type="button" id="activity-monthly" aria-pressed="true">Monthly</button>
+            <button type="button" id="activity-cumulative" aria-pressed="false">Cumulative</button>
+          </div>
+        </header>
+        <p class="panel-subtitle" id="activity-subtitle">Samples collected per month, by organism</p>
+        <div id="activity-chart" class="chart-activity"></div>
+        <div id="activity-table"></div>
       </section>
 
-      <!-- Growth and breakdown charts (lazy-loaded when in view) -->
-      <section class="panel-grid">
-        <section class="panel lazy-section" data-chart="growth">
-          <header class="panel-header">
-            <h2>Samples Captured Per Year</h2>
-          </header>
-          <div id="growth-chart" class="chart-medium" aria-label="Database growth area chart"></div>
-        </section>
-
-        <section class="panel lazy-section" data-chart="breakdown">
-          <header class="panel-header">
-            <h2>Data Breakdown By Environmental Sites</h2>
-          </header>
-          <div id="breakdown-chart" class="chart-medium"></div>
-        </section>
+      <section class="panel panel-wide" id="breakdown">
+        <header class="panel-header">
+          <h2>Data Breakdown By Environmental Sites</h2>
+        </header>
+        <div id="breakdown-chart" class="chart-breakdown"></div>
+        <div id="breakdown-table"></div>
       </section>
 
-      <!-- Coverage map: Leaflet + Canada GeoJSON + sample points -->
-      <section class="panel panel-wide lazy-section" data-chart="coverage">
-          <header class="panel-header">
-            <h2>Sample Coverage</h2>
-            <span class="panel-subtitle">Sample density by latitude/longitude</span>
-          </header>
-          <div id="coverage-chart" class="chart-large"></div>
+      <section class="panel panel-wide" id="coverage">
+        <header class="panel-header">
+          <h2>Sample Coverage</h2>
+          <span class="panel-subtitle">One marker per sampling site. Click a site to see its viral loads.</span>
+        </header>
+        <div id="coverage-chart" class="chart-large"></div>
+        <p class="panel-note" id="coverage-note"></p>
       </section>
 
-      <!-- CTA buttons: portal explorer and interactive dashboard -->
       <div class="explore-actions">
-        <button type="button" class="explore-cta" onclick="window.location.href='https://portal-ui.imicroseq-dataportal.ca/explorer/environmental'">Explore the iMicroSeq Data Portal</button>
-        <button type="button" class="primary-cta" onclick="window.location.href='./dashboard.html'">Visualize on the Interactive Dashboard</button>
+        <a class="explore-cta" href="https://portal-ui.imicroseq-dataportal.ca/explorer/environmental">Explore the iMicroSeq Data Portal</a>
+        <a class="primary-cta" href="dashboard.html">Visualize on the Interactive Dashboard</a>
       </div>
     </main>
 
-    <!-- Dashboard logic: fetch /data/*.json.gz, decompress, lazy charts -->
-    <script src="app.js"></script>
+    <footer class="site-footer">
+      <p>
+        Data: <a href="https://imicroseq-dataportal.ca/">Canadian iMicroSeq Data Portal</a>.
+        Live, cached up to 1 hour<span id="footer-fetched"></span>.
+      </p>
+      <p><a id="footer-help" href="#">How to use this dashboard</a></p>
+    </footer>
   </body>
 </html>
-

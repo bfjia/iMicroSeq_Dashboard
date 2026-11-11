@@ -1,0 +1,12 @@
+# Browser caching for static files (Cloudflare Workers static assets).
+# Code and viral data change on deploy, so keep them short; images and map shapes rarely change.
+/js/*
+  Cache-Control: public, max-age=300
+/data/viral/*
+  Cache-Control: public, max-age=3600
+/img/*
+  Cache-Control: public, max-age=604800
+/data/CAN.geo.json
+  Cache-Control: public, max-age=604800
+/data/ProvinceCapitalCoords.csv
+  Cache-Control: public, max-age=604800

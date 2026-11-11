@@ -141,3 +141,18 @@ vite.config.ts.timestamp-*
 ProjectiMicroSeq.code-workspace
 data/data.json
 data/data.tsv
+
+data_specification
+query_examples
+.wrangler
+
+# Wrangler local secrets (CARTO_API_KEY)
+.dev.vars
+.dev.vars.*
+
+# Built nightly by scripts/build-viral-loads.mjs, never committed
+public/data/viral/
+
+# Python bytecode
+__pycache__/
+*.pyc
