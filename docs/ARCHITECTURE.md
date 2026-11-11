@@ -8,7 +8,7 @@ Proof-of-concept dashboard for the [Canadian iMicroSeq Data Portal](https://imic
 Browser ── pages, JS, viral data files ──► Cloudflare static assets (free, no Worker run)
    ├── POST /api/graphql ──► Worker ──► edge cache (1 h) ──► portal GraphQL API
    └── GET  /tiles/...   ──► Worker ──► CARTO basemap (API key added here)
-GitHub Actions (nightly) ── npm test ── build viral files ── wrangler deploy
+Push to main, or nightly Worker cron ──► deploy hook ──► Workers Builds: npm test ── build viral files ── wrangler deploy
 ```
 
 - Most data is queried live from the portal's Arranger GraphQL API through the Worker, which caches identical queries.
@@ -22,8 +22,7 @@ GitHub Actions (nightly) ── npm test ── build viral files ── wrangle
 | Domain | `imicroseq-dashboard.bfjia.net` | `dashboard.imicroseq-dataportal.ca` |
 | Worker name | `imicroseq-dashboard` | `dashboard-imicroseq-dataportal-ca` (`[env.production]`) |
 | Repo | `bfjia/iMicroSeq_Dashboard` (this one) | a separate production repo |
-| Deploy command | `wrangler deploy --env=""` | `wrangler deploy --env production` |
-| `WRANGLER_ENV` repo variable | empty | `production` |
+| Deploy command (Workers Builds setting) | `npx wrangler deploy --env=""` | `npx wrangler deploy --env production` |
 
 Going to production is a pull request from this repo into the production repo, not a file copy. Never run `--env production` from this repo: the old production Worker keeps serving the production domain until cutover. See `docs/SOP.md`, section 9.
 
@@ -49,22 +48,19 @@ Each panel loads when it scrolls near the viewport (`whenVisible`). Identical qu
 | `POST /api/graphql` | Forwards to the portal Arranger endpoint. Cache key = SHA-256 of the body. Stores only 200 responses without GraphQL `errors`, for 3600 s. Sets `x-cache: HIT` or `MISS` and `x-fetched-at` (shown in the footer). Rejects non-POST (405), bodies over 64 KB (413) and any body containing `mutation` (400). Cloudflare compresses the response. |
 | `GET /tiles/light_all/{z}/{x}/{y}{r}.png` | Fetches the CARTO basemap tile with `CARTO_API_KEY`, cached at the edge for a week; errors are not cached. Returns 503 if the secret is missing, 404 for out-of-range tiles. |
 | anything else | `ASSETS` (static files). |
+| cron `30 8 * * *` (`[triggers]` in `wrangler.toml`) | POSTs to the `DEPLOY_HOOK_URL` secret, which starts a Workers Build of `main`. Logs an error if the secret is missing or the hook fails. |
 
 If the proxy fails, `public/js/api.js` calls the portal API directly, retrying once after 0.8 s. Static headers (browser cache lifetimes) are in `public/_headers`.
 
 ## Nightly pipeline
 
-`.github/workflows/deploy.yml`. Triggers: every night at 08:30 UTC, every push to `main`, manual run (Actions tab).
+Cloudflare Workers Builds, connected to the repo in the Cloudflare dashboard (settings live there, not in the repo; see `docs/SOP.md`, section 3). Triggers: every push to `main`, and the Worker's nightly cron calling the deploy hook. Non-production branch builds are off. No deploy token is stored in GitHub.
 
-1. Check out the repo; set up Node 24 (`.nvmrc`).
-2. `npm ci`
-3. `npm test`
-4. `npm run build:data` runs `scripts/build-viral-loads.mjs` (~10 minutes; 227,138 RT-PCR rows, paging slows from ~0.5 s to ~6 s per page partway through).
-5. `npx wrangler deploy --env="$WRANGLER_ENV"`
+1. Clone `main`; Node 24 from `.nvmrc`; install dependencies from `package-lock.json`.
+2. Build command `npm run build`: `npm test`, then `npm run build:data` runs `scripts/build-viral-loads.mjs` (~10 minutes; 227,138 RT-PCR rows, paging slows from ~0.5 s to ~6 s per page partway through).
+3. Deploy command `npx wrangler deploy --env=""` (production: `--env production`).
 
-Failure behaviour: if any step fails (for example the build finds a different row count than the API reported), nothing deploys and the site keeps the previous data. The build also writes to a temporary folder and swaps it in only on success.
-
-GitHub disables scheduled workflows after 60 days with no repo activity (re-enable in the Actions tab). Scheduled runs only use the default branch (`main`); development happens on `dev`.
+Failure behaviour: if any step fails (for example the build finds a different row count than the API reported), nothing deploys and the site keeps the previous data. The build also writes to a temporary folder and swaps it in only on success. Builds are stopped after 20 minutes, so a very slow portal API means a missed night, not a broken site.
 
 Build output (`public/data/viral/`, gitignored): 420 files in the last full build (315 site, 92 city, 12 province, 1 index), 9.4 MB raw, ~2.5 MB gzipped. Peak build memory ~217 MB. Values are rounded to 4 significant digits.
 
@@ -118,7 +114,6 @@ Known data caveats: catchment population is empty (0% recorded, so per-capita ra
 | `scripts/build-viral-loads.mjs` | Nightly viral build |
 | `scripts/smoothing/` | R LOESS reference scripts |
 | `wrangler.toml` | Worker name, domains, assets, `run_worker_first` |
-| `.github/workflows/deploy.yml` | Nightly build and deploy |
 | `test/` | Tests |
 
 ## Secrets
@@ -126,8 +121,9 @@ Known data caveats: catchment population is empty (0% recorded, so per-capita ra
 | Secret | Where | Used for |
 |---|---|---|
 | `CARTO_API_KEY` | Worker secret, set per Worker (environment); `.dev.vars` locally (gitignored) | Basemap tiles |
-| `CLOUDFLARE_API_TOKEN` | GitHub repo secret ("Edit Cloudflare Workers" token template) | Deploy |
-| `CLOUDFLARE_ACCOUNT_ID` | GitHub repo secret | Deploy |
+| `DEPLOY_HOOK_URL` | Worker secret, set per Worker | Nightly rebuild (anyone with the URL can start a build) |
+
+Deploy credentials are managed by Cloudflare (Workers Builds); the Cloudflare GitHub app has read access to the repo.
 
 Never put a key in `public/` or commit it. Who rotates them: `<fill in: name or role>`.
 
@@ -138,6 +134,8 @@ Never put a key in `public/` or commit it. Who rotates them: `<fill in: name or 
 | Worker requests | 100,000 per day | Mostly map tiles, ~15-25 per map view; plus uncached GraphQL queries |
 | Worker CPU | 10 ms per request | Proxy and tile code is light |
 | Static files | 20,000 | One file per viral site, city and province, plus the pages; count them after a build (`find public -type f \| wc -l`) |
+| Workers Builds | 3,000 build minutes per month, 20 minutes per build, 1 at a time | ~15 minutes per build, ~500 minutes per month (nightly plus merges) |
+| Cron triggers | 5 per account | 1 |
 
 At the request limit, data queries fall back to the portal API directly (slower, uncompressed) and basemap tiles fail. Static pages keep working. 
 
@@ -152,7 +150,7 @@ At the request limit, data queries fall back to the portal API directly (slower,
 
 ## Testing
 
-`npm test` runs `node --test "test/*.test.js"`, and the deploy workflow runs it before building.
+`npm test` runs `node --test "test/*.test.js"`; every Workers Build runs it first (`npm run build`).
 
 | File | Covers |
 |---|---|

@@ -14,6 +14,11 @@ run_worker_first = ["/api/*", "/tiles/*"]
 [observability]
 enabled = true
 
+# Nightly at 08:30 UTC the Worker calls DEPLOY_HOOK_URL (a secret), so Workers Builds
+# rebuilds the viral data from main and redeploys. See docs/SOP.md section 3.
+[triggers]
+crons = ["30 8 * * *"]
+
 [env.production]
 # Same name as the Worker that serves the production domain today, so cutover deploys over it in place.
 name = "dashboard-imicroseq-dataportal-ca"

@@ -6,9 +6,10 @@
   "description": "Dashboard for the iMicroSeq Data Portal",
   "scripts": {
     "dev": "wrangler dev",
+    "build": "npm test && npm run build:data",
     "build:data": "node scripts/build-viral-loads.mjs",
     "test": "node --test \"test/*.test.js\"",
-    "cf:deploy": "npm run build:data && wrangler deploy --env=\"\""
+    "cf:deploy": "npm run build && wrangler deploy --env=\"\""
   },
   "engines": {
     "node": ">=24"

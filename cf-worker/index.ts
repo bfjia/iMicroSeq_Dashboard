@@ -1,10 +1,12 @@
-// Cloudflare Worker. Two jobs, everything else is static assets from public/:
+// Cloudflare Worker. Everything else is static assets from public/:
 //   POST /api/graphql  -> portal GraphQL API, responses edge-cached for an hour
 //   GET  /tiles/...    -> CARTO map tiles, API key added here so it never reaches the browser
+//   nightly cron       -> calls the Workers Builds deploy hook, which rebuilds viral data and redeploys
 
 export interface Env {
   ASSETS: { fetch(input: RequestInfo, init?: RequestInit): Promise<Response> };
   CARTO_API_KEY?: string;
+  DEPLOY_HOOK_URL?: string;
 }
 
 interface Ctx {
@@ -104,5 +106,18 @@ export default {
       return match ? tile(match, env) : new Response('Not found', { status: 404 });
     }
     return env.ASSETS.fetch(request);
+  },
+
+  async scheduled(_event: unknown, env: Env, ctx: Ctx): Promise<void> {
+    if (!env.DEPLOY_HOOK_URL) {
+      console.error('DEPLOY_HOOK_URL secret is not set; nightly rebuild skipped');
+      return;
+    }
+    ctx.waitUntil(
+      fetch(env.DEPLOY_HOOK_URL, { method: 'POST' }).then((res) => {
+        if (!res.ok) console.error(`Deploy hook failed: ${res.status}`);
+        else console.log('Nightly rebuild started');
+      }),
+    );
   },
 };

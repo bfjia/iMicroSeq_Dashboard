@@ -27,37 +27,52 @@ Before publishing run `npm test` (expect `fail 0`).
 
 ## 3. Deploy and publish
 
-GitHub deploys the site whenever `main` changes, and again every night. You do not deploy from your computer. This repo deploys the staging site `https://imicroseq-dashboard.bfjia.net`. Production: section 9.
+Cloudflare (Workers Builds) builds and deploys the site whenever `main` changes. Every night at 08:30 UTC the Worker calls a deploy hook, which starts the same build, so viral data is refreshed. You do not deploy from your computer. This repo deploys the staging site `https://imicroseq-dashboard.bfjia.net`. Production: section 9.
+
+A build runs `npm run build` (tests, then about 10 minutes of viral data), then `npx wrangler deploy --env=""`. If any step fails, nothing deploys and the site keeps the previous version.
 
 ### First deploy (once)
 
 1. **Check the domain.** Cloudflare dashboard, account home: `bfjia.net` must be in the domain list of the account you will deploy to. If it is not, stop: that account cannot use the address.
-2. **Create a deploy token.** Profile icon, My Profile, API Tokens, Create Token, "Edit Cloudflare Workers" template, Use template. Each policy's resources are behind its pencil icon:
-   1. Zone policy, pencil: include the specific zone `bfjia.net` (or all zones). Save.
-   2. Account policy, pencil: the account that owns `bfjia.net`. Save.
-   3. Leave the User policy. Continue to summary, Create Token. Copy the token now; it is shown once.
-3. **Copy the Account ID.** Workers & Pages overview, right-hand side.
-4. **Give both to GitHub.** Repo, Settings, Secrets and variables, Actions, Secrets tab, New repository secret. Name `CLOUDFLARE_API_TOKEN`, paste the token, Add secret. Repeat with `CLOUDFLARE_ACCOUNT_ID`. On the Variables tab there must be no `WRANGLER_ENV` (or it is empty).
-5. **Merge `dev` into `main`** (steps 2 and 3 of "Publish a change" below). The merge starts the deploy.
-6. **Watch it.** Actions tab, "Build and deploy": yellow = running (10 to 15 minutes), green tick = live. Red: section 7.
-7. **Store the map key on the Worker.** Only possible after step 6 (the Worker exists only after its first deploy). In the project folder:
+2. **Connect the repo.**
+   - Worker `imicroseq-dashboard` already exists: Workers & Pages, `imicroseq-dashboard`, Settings, Build, Connect.
+   - It does not exist: Workers & Pages, Create, Import a repository. The project name must be exactly `imicroseq-dashboard` (the `name` in `wrangler.toml`).
+
+   Then: sign in to GitHub and allow the Cloudflare app access to `bfjia/iMicroSeq_Dashboard`. Pick that repo and fill in:
+
+   | Setting | Value |
+   |---|---|
+   | Branch | `main` |
+   | Build command | `npm run build` |
+   | Deploy command | `npx wrangler deploy --env=""` |
+   | Builds for non-production branches | Off (each build costs about 15 build minutes) |
+
+   Save (or Create and deploy).
+3. **Watch the build.** The Worker, Deployments tab (build list). Running takes 10 to 15 minutes; success = live. Failed: section 7.
+4. **Store the map key on the Worker.** Command line, in the project folder:
    1. `npx wrangler login`. A browser opens; click Allow. If none opens, copy the link it prints into a browser.
    2. `npx wrangler secret put CARTO_API_KEY --env=""`. Paste the key, press Enter. It should end with "Success". It works at once; no redeploy.
-8. **Check the site.** Open `https://imicroseq-dashboard.bfjia.net` (the first time, the address can take a few minutes to start working). Hero numbers appear, the map shows streets, and the Interactive Dashboard footer shows "Viral loads as of <today>".
+
+   Or on the website: the Worker, Settings, Variables and Secrets, Add. Type: Secret. Variable name: `CARTO_API_KEY`. Value: paste the key. Click Deploy. Later builds keep it.
+5. **Set up the nightly rebuild.**
+   1. The Worker, Settings, Build, Deploy Hooks, Create. Name `nightly`, branch `main`. Copy the URL and keep it in your password manager; anyone with it can start a build.
+   2. Store it like the map key, with the name `DEPLOY_HOOK_URL`: `npx wrangler secret put DEPLOY_HOOK_URL --env=""`, or the website method in step 4.
+6. **Check the site.** Open `https://imicroseq-dashboard.bfjia.net` (the first time, the address can take a few minutes to start working). Hero numbers appear, the map shows streets, and the Interactive Dashboard footer shows "Viral loads as of <today>". The next morning the date should move on by itself.
+7. **If you used GitHub Actions before:** delete the GitHub secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (repo, Settings, Secrets and variables, Actions), then delete that token in Cloudflare (My Profile, API Tokens).
 
 ### Publish a change
 
 1. `git add -A`, `git commit -m "Describe the change"`, `git push origin dev`.
 2. GitHub: Pull requests, New pull request, base `main`, compare `dev`, Create pull request.
 3. After review: Merge pull request, Confirm merge.
-4. The deploy starts by itself. Actions tab, "Build and deploy": yellow = running (10 to 15 minutes), green tick = live.
+4. The build starts by itself (the Worker, Deployments tab). 10 to 15 minutes; success = live.
 5. Check the site: the footer shows "fetched <date>" and, on the Interactive Dashboard, "Viral loads as of <today>".
 
-Deploy without a change: Actions tab, Build and deploy, Run workflow, branch `main`.
+Deploy without a change: `curl -X POST "<deploy hook URL>"` (from step 5), or retry the latest build in the build list.
 
-Roll back: open the merged PR on GitHub, click Revert, merge the new PR. Alternatively re-run an older green run (Re-run all jobs); this rebuilds viral data from today.
+Roll back: the Worker, Deployments, pick an earlier version, Rollback. This lasts until the next build (the next merge or that night), so also revert the change: open the merged PR on GitHub, click Revert, merge the new PR.
 
-Emergency only, if GitHub Actions is down: `npm run cf:deploy` from your computer (after `npx wrangler login`) builds and deploys staging in about 10 minutes.
+Emergency only, if Cloudflare builds are down: `npm run cf:deploy` from your computer (after `npx wrangler login`) tests, builds and deploys staging in about 10 minutes.
 
 ## 4. Using the dashboard
 
@@ -81,14 +96,14 @@ Proof of concept for demonstration only. Not for scientific interpretation. Chec
 
 Monthly:
 
-1. Actions tab: recent "Build and deploy" runs are green.
+1. The Worker, Deployments tab: recent builds succeeded, one per night.
 2. Interactive Dashboard footer: viral date is within a day or two.
 3. Cloudflare, Workers & Pages, the Worker, Metrics: requests well under 100,000 per day.
-4. GitHub stops the nightly schedule after 60 days without repo activity. If it stopped: Actions tab, Enable workflow.
+4. Build minutes (account billing or usage page): well under 3,000 per month (expect about 500).
 
 Every three months: `npm install -D wrangler@latest`, `npm test`, publish (section 3). Check the pinned chart library versions in `public/index.html` and `public/dashboard.html`.
 
-Rotate a key: map key, get a new one from CARTO, run `npx wrangler secret put CARTO_API_KEY --env=""`, update `.dev.vars`. Cloudflare token, create a new one (section 3, first deploy, step 2), replace the GitHub secret, delete the old token.
+Rotate a key: map key, get a new one from CARTO, run `npx wrangler secret put CARTO_API_KEY --env=""`, update `.dev.vars`. Deploy hook: delete it (Settings, Build, Deploy Hooks), create a new one, store it again (section 3, first deploy, step 5).
 
 If the portal adds or renames fields: update the names in `public/js/config.js` (section 6), preview, publish.
 
@@ -110,10 +125,13 @@ In `public/js/config.js`. Then preview (section 2), `npm test`, publish (section
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| Map blank, tiles 503 | `CARTO_API_KEY` missing on the Worker | `npx wrangler secret put CARTO_API_KEY --env=""` || Panel says "Could not load this from the data portal" | Portal API down, or ad blocker | Disable ad blockers, click Try again, check the portal |
-| Viral data is old | Nightly workflow failing | Actions tab: open the latest red run, read the failing step |
-| Red at "Build viral-load files" | Portal API changed, or row count mismatch | Re-run all jobs once. If it repeats, send the log to the developer. The site keeps the last good data. |
-| Red at "Deploy to Cloudflare" | Token, account ID or domain | Check both secrets. `bfjia.net` must be in that Cloudflare account and in the token's Zone policy (section 3, first deploy, steps 1 and 2). If the error is about the domain, edit the token and add DNS Write to the Zone policy |
+| Map blank, tiles 503 | `CARTO_API_KEY` missing on the Worker | `npx wrangler secret put CARTO_API_KEY --env=""` |
+| Panel says "Could not load this from the data portal" | Portal API down, or ad blocker | Disable ad blockers, click Try again, check the portal |
+| Viral data is old, no build that night | `DEPLOY_HOOK_URL` missing or the hook was deleted | The Worker, Logs: look for "DEPLOY_HOOK_URL secret is not set" or "Deploy hook failed". Redo section 3, first deploy, step 5 |
+| Viral data is old, builds failing | See the build log | The Worker, Deployments, open the failed build, read the last red lines |
+| Build log ends in "Build was timed out" | Portal API slow; builds stop at 20 minutes | Retry later. If it keeps happening, send the log to the developer. The site keeps the last good data. |
+| Build fails in `build-viral-loads` | Portal API changed, or row count mismatch | Retry once. If it repeats, send the log to the developer. The site keeps the last good data. |
+| Build fails at the deploy step | Worker name or domain | The Worker name must equal `name` in `wrangler.toml`; `bfjia.net` must be in this Cloudflare account |
 | Numbers look odd | Data issue | Compare with the [data portal](https://portal-ui.imicroseq-dataportal.ca/explorer/environmental) |
 | Local 404 on a new file | Server started before the file existed | Ctrl+C, `npm run dev` |
 
@@ -124,7 +142,8 @@ In `public/js/config.js`. Then preview (section 2), `npm test`, publish (section
 | GitHub repo admin | Repo, Settings, Collaborators |
 | Cloudflare account member | Cloudflare, Manage Account, Members |
 | CARTO key | `<fill in: who owns the CARTO account>` |
-| Secrets | `CARTO_API_KEY` (Worker), `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (GitHub). Rotate when someone leaves (section 5). |
+| Cloudflare app on GitHub | GitHub, Settings, Applications, Cloudflare Workers and Pages: which repos it can read |
+| Secrets | `CARTO_API_KEY`, `DEPLOY_HOOK_URL` (both on the Worker). Rotate when someone leaves (section 5). |
 
 Contacts: data portal `<fill in: data portal contact>`; Cloudflare account owner `<fill in>`; key rotation `<fill in>`.
 
@@ -133,9 +152,10 @@ Contacts: data portal `<fill in: data portal contact>`; Cloudflare account owner
 Production is a separate repo; you open a pull request from this repo into it. Never deploy with `--env production` from this repo.
 
 1. If the repos share no history: `git remote add prod <fill in: production repo URL>`, then `git push prod dev`.
-2. In the production repo (Settings, Secrets and variables, Actions) add secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, and variable `WRANGLER_ENV` = `production`. Do this before merging.
-3. Ensure the production Worker has the map key: `npx wrangler secret put CARTO_API_KEY --env production` (it may already have one).
-4. Open a pull request into the production repo's `main` and merge it.
-5. Run the workflow manually (section 3); wait for green.
+2. Open a pull request into the production repo's `main` and merge it. Nothing deploys yet.
+3. In the Cloudflare account that owns `imicroseq-dataportal.ca`: Workers & Pages, `dashboard-imicroseq-dataportal-ca`, Settings, Build, Connect. Same settings as section 3, step 2, except: the production repo, and deploy command `npx wrangler deploy --env production`. The first build starts the cutover.
+4. Map key, if the Worker has none yet: `npx wrangler secret put CARTO_API_KEY --env production`.
+5. Nightly rebuild: create a deploy hook on that Worker (section 3, step 5), then `npx wrangler secret put DEPLOY_HOOK_URL --env production`.
 6. Check `https://dashboard.imicroseq-dataportal.ca`: pages load, footer dates current, map shows tiles.
 7. In the production repo update the live links in `README.md` and `CLAUDE.md`, and `HELP_URL` in `public/js/config.js`. Publish.
+8. Optional: disconnect or delete the staging Worker `imicroseq-dashboard` to save build minutes (both Workers share the account's 3,000 if they are in the same account).
