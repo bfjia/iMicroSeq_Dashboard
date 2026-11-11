@@ -43,6 +43,8 @@ GitHub deploys the site whenever `main` changes, and again every night. You do n
 7. **Store the map key on the Worker.** Only possible after step 6 (the Worker exists only after its first deploy). In the project folder:
    1. `npx wrangler login`. A browser opens; click Allow. If none opens, copy the link it prints into a browser.
    2. `npx wrangler secret put CARTO_API_KEY --env=""`. Paste the key, press Enter. It should end with "Success". It works at once; no redeploy.
+
+   Or on the website: Cloudflare, Workers & Pages, `imicroseq-dashboard`, Settings, Variables and Secrets, Add. Type: Secret. Variable name: `CARTO_API_KEY`. Value: paste the key. Click Deploy. Later deploys from GitHub keep it.
 8. **Check the site.** Open `https://imicroseq-dashboard.bfjia.net` (the first time, the address can take a few minutes to start working). Hero numbers appear, the map shows streets, and the Interactive Dashboard footer shows "Viral loads as of <today>".
 
 ### Publish a change
