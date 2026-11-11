@@ -6,10 +6,9 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 const ROOT = join(import.meta.dirname, '..');
-// CLAUDE.md is gitignored, so it is only checked where it exists.
-const DOCS = ['README.md', ...(existsSync(join(ROOT, 'CLAUDE.md')) ? ['CLAUDE.md'] : []), ...readdirSync(join(ROOT, 'docs')).filter((f) => f.endsWith('.md')).map((f) => `docs/${f}`)];
-// Generated or private files that legitimately don't exist in a fresh clone.
-const SKIP = ['public/data/viral', '.dev.vars', 'node_modules', 'CLAUDE.md'];
+const DOCS = ['README.md', 'CLAUDE.md', ...readdirSync(join(ROOT, 'docs')).filter((f) => f.endsWith('.md')).map((f) => `docs/${f}`)];
+// Generated, private or local-only files that don't exist in a fresh clone.
+const SKIP = ['public/data/viral', '.dev.vars', 'node_modules', 'data_specification', 'query_examples'];
 const FILE_LIKE = /^[\w.\-/]+\.(js|mjs|ts|json|toml|md|css|html|csv|yml|tsv|png|R)$|^[\w.\-]+\/([\w.\-]+\/)*$/;
 
 for (const doc of DOCS) {

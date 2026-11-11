@@ -142,8 +142,6 @@ ProjectiMicroSeq.code-workspace
 data/data.json
 data/data.tsv
 
-CLAUDE.md
-
 data_specification
 query_examples
 .wrangler
