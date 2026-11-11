@@ -409,7 +409,9 @@ body {
   height: 640px;
 }
 
-/* Viral loads panel: full width like explore-panel */
+/* Viral loads section (public/js/viral.js). To merge into styles.css: these replace the
+   .viral-* rules there; the .viral-date-dual-slider rules in styles.css can be deleted. */
+
 .viral-load-panel {
   background: linear-gradient(180deg, rgba(26, 47, 74, 0.06), rgba(255, 255, 255, 0));
   width: 100vw;
@@ -418,10 +420,7 @@ body {
   right: 50%;
   margin-left: -50vw;
   margin-right: -50vw;
-  padding-left: 1.5rem;
-  padding-right: 1.5rem;
-  padding-top: 1.5rem;
-  padding-bottom: 2rem;
+  padding: 1.5rem 1.5rem 2rem;
   border-top: 1px solid #d7deef;
   box-sizing: border-box;
 }
@@ -433,7 +432,6 @@ body {
   width: 100%;
 }
 
-/* Viral loads dropdowns: three rows */
 .viral-load-filters {
   display: flex;
   flex-direction: column;
@@ -456,21 +454,37 @@ body {
   font-size: 0.8rem;
 }
 
-.viral-load-err-detail {
-  margin-top: 0.5em;
-  font-size: 0.9em;
-  opacity: 0.85;
+.viral-assay-note {
+  margin: 0 auto;
+  max-width: 52rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.viral-notice {
+  margin: 0 auto;
+  padding: 0.5rem 0.9rem;
+  max-width: 52rem;
+  font-size: 0.9rem;
+  color: #1a2f4a;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  text-align: center;
+}
+.viral-notice[hidden] {
+  display: none;
 }
 
 .viral-all-filter-warning {
-  margin: 0.35rem 0 0;
+  margin: 0.35rem auto 0;
   font-size: 0.95rem;
   font-weight: 700;
   color: #92400e;
   line-height: 1.4;
   max-width: 52rem;
-  margin-left: auto;
-  margin-right: auto;
   text-align: center;
 }
 .viral-all-filter-warning strong {
@@ -480,26 +494,24 @@ body {
 .viral-load-chart {
   width: 100%;
   min-width: 280px;
-  min-height: 640px;
+  min-height: 600px;
+  transition: opacity 0.15s ease;
+}
+/* Refetching: keep the previous chart, dimmed, instead of a skeleton flash */
+.viral-load-chart.viral-busy {
+  opacity: 0.5;
 }
 
-/* Date range: single dual-thumb slider, bottom centered */
+/* Date range: calendar inputs + presets, then toggles */
 .viral-date-range-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   width: 100%;
   margin-bottom: 0.5rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid #e5e7eb;
-}
-.viral-chart-toggles {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem 1.5rem;
 }
 .viral-date-range-wrap.hidden {
   display: none;
@@ -511,7 +523,6 @@ body {
   align-items: flex-end;
   gap: 1rem 1.5rem;
   width: 100%;
-  max-width: 480px;
 }
 .viral-date-cal-field {
   display: flex;
@@ -538,6 +549,49 @@ body {
   outline: 2px solid #4a63e7;
   outline-offset: 1px;
 }
+
+/* Preset buttons: one pill group */
+.viral-presets {
+  display: inline-flex;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #fff;
+}
+.viral-preset {
+  font: inherit;
+  font-size: 0.85rem;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.9rem;
+  border: 0;
+  border-left: 1px solid #d1d5db;
+  background: transparent;
+  color: #4b5563;
+  cursor: pointer;
+}
+.viral-preset:first-child {
+  border-left: 0;
+}
+.viral-preset:hover {
+  background: #f3f4f6;
+}
+.viral-preset[aria-pressed="true"] {
+  background: #4a63e7;
+  color: #fff;
+}
+.viral-preset:focus-visible {
+  outline: 2px solid #4a63e7;
+  outline-offset: -2px;
+}
+
+/* Toggle switches */
+.viral-chart-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem 1.5rem;
+}
 .viral-show-line-toggle {
   display: flex;
   align-items: center;
@@ -546,6 +600,10 @@ body {
   color: #4b5563;
   cursor: pointer;
   user-select: none;
+}
+.viral-show-line-toggle.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 .viral-toggle-input {
   position: absolute;
@@ -586,9 +644,28 @@ body {
 .viral-toggle-input:checked + .viral-toggle-track::after {
   transform: translateX(20px);
 }
+.viral-toggle-input:focus-visible + .viral-toggle-track {
+  outline: 2px solid #4a63e7;
+  outline-offset: 2px;
+}
 .viral-toggle-label {
   flex: 0 0 auto;
 }
+
+@media (max-width: 640px) {
+  .viral-load-panel {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .viral-load-filters .viral-field-select select {
+    width: 100%;
+    min-width: 0;
+  }
+  .viral-filter-row .viral-field-select {
+    flex: 1 1 140px;
+  }
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

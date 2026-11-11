@@ -5,170 +5,88 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Interactive Dashboard – iMicroSeq</title>
     <link rel="stylesheet" href="styles.css" />
-    <!-- Vega/Vega-Lite for charts -->
     <script src="https://cdn.jsdelivr.net/npm/vega@6.2.0/build/vega.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-lite@6.4.2/build/vega-lite.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@7.1.0/build/vega-embed.min.js"></script>
+    <script type="module" src="js/dashboard.js"></script>
   </head>
   <body>
-    <!-- Sticky header: logo (links to iMicroSeq portal) + nav -->
     <header class="site-header">
       <div class="header-logo-area">
         <div class="header-logo-panel">
-          <a href="https://imicroseq-dataportal.ca/"><img src="./img/imicroseq-logo.png" alt="iMicroSeq" class="header-logo-img" /></a>
+          <a href="https://imicroseq-dataportal.ca/"><img src="img/imicroseq-logo.png" alt="iMicroSeq Data Portal" class="header-logo-img" /></a>
         </div>
       </div>
-      <nav class="header-nav">
+      <nav class="header-nav" aria-label="Main">
         <span class="header-poc-notice">This dashboard is for proof-of-concept demonstration purposes only.</span>
-        <a href="./index.html" class="header-link">Home<span class="header-chevron" aria-hidden="true">▼</span></a>
+        <a href="./" class="header-link">At a Glance</a>
+        <a href="dashboard.html" class="header-link" aria-current="page">Interactive Dashboard</a>
+        <a href="https://portal-ui.imicroseq-dataportal.ca/explorer/environmental" class="header-link">Data Portal ↗</a>
       </nav>
     </header>
 
-    <div id="loading-overlay" class="loading-overlay" aria-hidden="false" aria-busy="true" aria-live="polite">
-      <div class="loading-content">
-        <div class="loading-spinner" aria-hidden="true"></div>
-        <p class="loading-text">Loading dashboard…</p>
-      </div>
-    </div>
-
     <main class="page">
-      <!-- Page title with star icon -->
       <header class="page-title">
         <h1 class="page-title-text">Interactive Dashboard</h1>
-        <span class="page-title-icon" aria-hidden="true">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 31 27" fill="currentColor">
-            <path d="M15.5 0l-2.708 5.278c-.307.574-.857.52-1.408.2l-1.96-1.06 1.46 8.107c.308 1.481-.678 1.481-1.164.841L6.3 9.363l-.556 2.033c-.064.267-.345.547-.768.48l-4.325-.95 1.136 4.318c.243.96.433 1.358-.245 1.612L0 17.613l7.445 6.323c.295.239.444.669.34 1.058l-.653 2.236c2.564-.31 4.863-.586 7.426-.894.228-.003.605.2.604.474l-.34 8.19h1.247l-.196-8.173c-.002-.274.34-.494.568-.491l7.426.894-.651-2.236c-.105-.39.044-.82.338-1.058L31 17.613l-1.542-.757c-.678-.254-.489-.652-.245-1.612l1.136-4.318-4.325.95c-.423.067-.704-.213-.768-.48L24.7 9.363l-3.42 4.003c-.487.64-1.472.64-1.165-.84l1.461-8.109-1.96 1.062c-.55.32-1.1.373-1.408-.2L15.5 0z"/>
-          </svg>
-        </span>
-        <h1 class="page-title-text">The Canadian iMicroSeq Data Portal</h1>
+        <p class="page-title-subtext">The Canadian iMicroSeq Data Portal, explored live.</p>
         <p class="page-title-subtext">Best viewed in landscape mode.</p>
       </header>
 
-      <!-- Explore / SampleFieldSpec chart (same as index page) -->
-      <section class="explore-panel lazy-section" data-chart="sample">
+      <!-- Sample explorer (public/js/dashboard.js) -->
+      <section class="explore-panel" id="explorer">
         <header class="explore-header">
           <div class="explore-kicker">
             <span class="explore-badge">Portal Data</span>
-            <span class="explore-kicker-text">Sample breakdown</span>
+            <h2 class="explore-kicker-text">Sample breakdown</h2>
           </div>
-          <p class="explore-subtitle">
-            Explore the data types on the iMicroSeq Data Portal.
-          </p>
+          <p class="explore-subtitle">Count samples by any two fields. Live from the data portal.</p>
         </header>
-
-        <div class="explore-content">
-          <div class="explore-chart-area">
-            <div class="axis-selects">
-              <label class="field-select">
-                <span class="label">Plot type</span>
-                <select id="sample-chart-plot-type">
-                  <option value="stacked-bar">Stacked bar</option>
-                  <!-- <option value="line">Line</option> -->
-                </select>
-              </label>
-              <label class="field-select">
-                <span class="label">X axis</span>
-                <select id="sample-chart-x"></select>
-              </label>
-              <label class="field-select" id="sample-chart-y-wrap">
-                <span class="label">Segment By</span>
-                <select id="sample-chart-y"></select>
-              </label>
-            </div>
-            <div id="sample-chart" class="sample-chart"></div>
+        <div class="axis-selects">
+          <label class="field-select">
+            <span class="label">X axis</span>
+            <select id="explorer-x"></select>
+          </label>
+          <button type="button" id="explorer-swap" class="icon-btn" title="Swap axes" aria-label="Swap X axis and Segment By">⇄</button>
+          <label class="field-select">
+            <span class="label">Segment by</span>
+            <select id="explorer-seg"></select>
+          </label>
+          <div class="segmented" role="group" aria-label="Show as">
+            <button type="button" id="explorer-count" aria-pressed="true">Count</button>
+            <button type="button" id="explorer-pct" aria-pressed="false">Percent</button>
           </div>
         </div>
+        <div id="explorer-chart" class="sample-chart"></div>
+        <div id="explorer-table"></div>
       </section>
 
-      <hr class="section-divider" aria-hidden="true" />
-
-      <!-- Viral Loads: full-width like sample field breakdown -->
-      <section class="viral-load-panel lazy-section" data-chart="viral-load">
+      <!-- Metadata completeness (public/js/dashboard.js) -->
+      <section class="explore-panel" id="completeness">
         <header class="explore-header">
           <div class="explore-kicker">
-            <span class="explore-badge">Viral Loads</span>
-            <span class="explore-kicker-text">Trends over time</span>
+            <span class="explore-badge">Data Quality</span>
+            <h2 class="explore-kicker-text">Metadata completeness</h2>
           </div>
-          <p class="explore-subtitle">
-            See how the portal captures viral load data over time.
-          </p>
-          <p class="explore-subtitle">
-            Proof of concept demonstration purposes only. Not for scientific interpretation.
-          </p>
+          <p class="explore-subtitle">How often each key field holds a real value, across all samples.</p>
         </header>
-        <div class="viral-load-content">
-          <div class="viral-load-filters">
-            <div class="viral-filter-row">
-              <label class="field-select viral-field-select">
-                <span class="label">Province</span>
-                <select id="viral-province"></select>
-              </label>
-              <label class="field-select viral-field-select">
-                <span class="label">City</span>
-                <select id="viral-city"></select>
-              </label>
-              <label class="field-select viral-field-select">
-                <span class="label">Site</span>
-                <select id="viral-site"></select>
-              </label>
-              <label class="field-select viral-field-select">
-                <span class="label">Assay type</span>
-                <select id="viral-assay"></select>
-              </label>
-            </div>
-            <div class="viral-filter-row">
-              <label class="field-select viral-field-select">
-                <span class="label">Organism</span>
-                <select id="viral-organism"></select>
-              </label>
-              <label class="field-select viral-field-select">
-                <span class="label">Gene Target</span>
-                <select id="viral-gene"></select>
-              </label>
-              <label class="field-select viral-field-select">
-                <span class="label">Measurement Unit</span>
-                <select id="viral-unit"></select>
-              </label>
-            </div>
-          </div>
-          <div class="viral-date-range-wrap" id="viral-date-range">
-            <div class="viral-date-calendar-row" role="group" aria-label="Choose dates on the calendar">
-              <label class="viral-date-cal-field">
-                <span class="viral-date-cal-label">From</span>
-                <input type="date" id="viral-date-from-cal" class="viral-date-cal-input" />
-              </label>
-              <label class="viral-date-cal-field">
-                <span class="viral-date-cal-label">To</span>
-                <input type="date" id="viral-date-to-cal" class="viral-date-cal-input" />
-              </label>
-            </div>
-            <div class="viral-date-dual-slider" role="group" aria-label="Date range sliders">
-              <input type="range" id="viral-date-from" min="0" max="0" value="0" aria-label="From date" />
-              <input type="range" id="viral-date-to" min="0" max="0" value="0" aria-label="To date" />
-            </div>
-            <div class="viral-chart-toggles">
-              <label class="viral-show-line-toggle">
-                <input type="checkbox" id="viral-show-line" class="viral-toggle-input" aria-describedby="viral-show-line-desc" />
-                <span class="viral-toggle-track" aria-hidden="true"></span>
-                <span id="viral-show-line-desc" class="viral-toggle-label">Show line between points</span>
-              </label>
-              <label class="viral-show-line-toggle">
-                <input type="checkbox" id="viral-loess-full-series" class="viral-toggle-input" aria-describedby="viral-loess-full-desc" checked />
-                <span class="viral-toggle-track" aria-hidden="true"></span>
-                <span id="viral-loess-full-desc" class="viral-toggle-label">Full-series LOESS</span>
-              </label>
-            </div>
-          </div>
-          <p class="explore-subtitle viral-load-smoothing-note">
-            The gray dashed trend line is LOESS-smoothed (polynomial degree 2, span 0.2). <br> </bbr>By default it fits across all data matching your filters. Turn off Full-series LOESS to smooth only across the visible date window.
-          </p>
-          <p id="viral-all-filter-warning" class="viral-all-filter-warning explore-subtitle" hidden aria-live="polite"></p>
-          <div id="viral-load-chart" class="viral-load-chart"></div>
-        </div>
+        <div id="completeness-chart" class="completeness-chart"></div>
+        <div id="completeness-table"></div>
       </section>
+
+      <!-- viral:start (markup owned by public/js/viral.js) -->
+      <section class="viral-load-panel" id="viral">
+        <div id="viral-root"></div>
+      </section>
+      <!-- viral:end -->
     </main>
 
-    <script src="graphql.js"></script>
-    <script src="app.js"></script>
+    <footer class="site-footer">
+      <p>
+        Data: <a href="https://imicroseq-dataportal.ca/">Canadian iMicroSeq Data Portal</a>.
+        Live, cached up to 1 hour<span id="footer-fetched"></span>.
+        <span id="footer-viral-asof"></span>
+      </p>
+      <p><a id="footer-help" href="#">How to use this dashboard</a></p>
+    </footer>
   </body>
 </html>
