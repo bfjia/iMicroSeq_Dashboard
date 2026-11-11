@@ -32,7 +32,10 @@ GitHub deploys the site whenever `main` changes, and again every night. You do n
 ### First deploy (once)
 
 1. **Check the domain.** Cloudflare dashboard, account home: `bfjia.net` must be in the domain list of the account you will deploy to. If it is not, stop: that account cannot use the address.
-2. **Create a deploy token.** Profile icon, My Profile, API Tokens, Create Token, "Edit Cloudflare Workers" template, Use template. Account Resources: this account. Zone Resources: `bfjia.net` (or All zones). Continue to summary, Create Token. Copy the token now; it is shown once.
+2. **Create a deploy token.** Profile icon, My Profile, API Tokens, Create Token, "Edit Cloudflare Workers" template, Use template. Each policy's resources are behind its pencil icon:
+   1. Zone policy, pencil: include the specific zone `bfjia.net` (or all zones). Save.
+   2. Account policy, pencil: the account that owns `bfjia.net`. Save.
+   3. Leave the User policy. Continue to summary, Create Token. Copy the token now; it is shown once.
 3. **Copy the Account ID.** Workers & Pages overview, right-hand side.
 4. **Give both to GitHub.** Repo, Settings, Secrets and variables, Actions, Secrets tab, New repository secret. Name `CLOUDFLARE_API_TOKEN`, paste the token, Add secret. Repeat with `CLOUDFLARE_ACCOUNT_ID`. On the Variables tab there must be no `WRANGLER_ENV` (or it is empty).
 5. **Merge `dev` into `main`** (steps 2 and 3 of "Publish a change" below). The merge starts the deploy.
@@ -110,7 +113,7 @@ In `public/js/config.js`. Then preview (section 2), `npm test`, publish (section
 | Map blank, tiles 503 | `CARTO_API_KEY` missing on the Worker | `npx wrangler secret put CARTO_API_KEY --env=""` || Panel says "Could not load this from the data portal" | Portal API down, or ad blocker | Disable ad blockers, click Try again, check the portal |
 | Viral data is old | Nightly workflow failing | Actions tab: open the latest red run, read the failing step |
 | Red at "Build viral-load files" | Portal API changed, or row count mismatch | Re-run all jobs once. If it repeats, send the log to the developer. The site keeps the last good data. |
-| Red at "Deploy to Cloudflare" | Token, account ID or domain | Check both secrets. `bfjia.net` must be in that Cloudflare account and in the token's Zone Resources (section 3, first deploy, steps 1 and 2) |
+| Red at "Deploy to Cloudflare" | Token, account ID or domain | Check both secrets. `bfjia.net` must be in that Cloudflare account and in the token's Zone policy (section 3, first deploy, steps 1 and 2). If the error is about the domain, edit the token and add DNS Write to the Zone policy |
 | Numbers look odd | Data issue | Compare with the [data portal](https://portal-ui.imicroseq-dataportal.ca/explorer/environmental) |
 | Local 404 on a new file | Server started before the file existed | Ctrl+C, `npm run dev` |
 
