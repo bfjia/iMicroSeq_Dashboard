@@ -151,7 +151,7 @@ const X_MONTH = {
   axis: { format: '%Y', grid: false, tickCount: 'year', labelOverlap: true },
 };
 
-function monthlySpec({ rows, order }, narrow) {
+function monthlySpec({ rows, order }) {
   return {
     width: 'container',
     height: 300,
@@ -162,7 +162,7 @@ function monthlySpec({ rows, order }, narrow) {
       y: { aggregate: 'sum', field: 'n', type: 'quantitative', title: 'Samples', axis: { format: '~s' } },
       color: {
         field: 'organism', type: 'nominal', sort: order, scale: colorScale(order),
-        legend: { orient: narrow ? 'bottom' : 'top', columns: narrow ? 1 : undefined, title: null, labelLimit: 360 },
+        legend: { orient: 'bottom', columns: 1, title: null, labelLimit: 360 },
       },
       order: { field: 'rank', type: 'quantitative' },
       tooltip: [
@@ -183,7 +183,7 @@ function cumulativeSpec(rows) {
     height: 300,
     data: { values: rows },
     layer: [
-      { mark: { type: 'area', interpolate: 'step-after', color: '#4A63E726', line: { color: PALETTE[0], strokeWidth: 2 } }, encoding: { x, y } },
+      { mark: { type: 'area', interpolate: 'monotone', color: '#4A63E726', line: { color: PALETTE[0], strokeWidth: 2 } }, encoding: { x, y } },
       {
         params: [{ name: 'hover', select: { type: 'point', encodings: ['x'], nearest: true, on: 'pointerover', clear: 'pointerout' } }],
         mark: { type: 'rule', color: '#9aa3b2' },
@@ -207,7 +207,7 @@ function activity() {
   const subtitle = document.getElementById('activity-subtitle');
   const btnMonthly = document.getElementById('activity-monthly');
   const btnCumulative = document.getElementById('activity-cumulative');
-  let mode = 'monthly';
+  let mode = 'cumulative';
 
   const draw = () => panel(el, async () => {
     const d = await loadIndex();
@@ -215,7 +215,7 @@ function activity() {
       subtitle.textContent = 'Samples collected per month, by organism';
       const m = await monthlyByOrganism(d);
       el.innerHTML = '';
-      await embed(el, monthlySpec(m, el.clientWidth < 600));
+      await embed(el, monthlySpec(m));
       dataTable(table, [{ key: 'month', label: 'Month' }, { key: 'organism', label: 'Organism' }, { key: 'n', label: 'Samples' }],
         m.rows.map((r) => ({ ...r, month: r.month.slice(0, 7) })));
     } else {
@@ -255,24 +255,29 @@ function breakdownRows(buckets) {
   return top.map(([category, value]) => ({ category, value, pct: value / total }));
 }
 
-function breakdownSpec(rows) {
-  const y = { field: 'category', type: 'nominal', sort: rows.map((r) => r.category), title: null, axis: { labelLimit: 260 } };
-  // Extra room on the right so the % labels are never clipped.
-  const max = Math.max(...rows.map((r) => r.value));
-  const x = { field: 'value', type: 'quantitative', title: 'Samples', axis: { format: '~s' }, scale: { domain: [0, max * 1.18], nice: false } };
-  const tooltip = [
-    { field: 'category', title: 'Environmental site' },
-    { field: 'value', type: 'quantitative', title: 'Samples', format: ',' },
-    { field: 'pct', type: 'quantitative', title: 'Share', format: '.1%' },
-  ];
+// Pie: largest slice first, clockwise; "Other" (gray) last.
+function breakdownSpec(rows, narrow) {
+  const values = rows.map((r, i) => ({ ...r, rank: i, label: `${r.category} (${(r.pct * 100).toFixed(1)}%)` }));
+  const labels = values.map((r) => r.label);
+  const { range } = colorScale(rows.map((r) => r.category)); // "Other" stays gray
   return {
     width: 'container',
-    height: { step: 30 },
-    data: { values: rows },
-    layer: [
-      { mark: { type: 'bar', color: PALETTE[0], cornerRadiusEnd: 4, height: { band: 0.7 }, strokeWidth: 0 }, encoding: { x, y, tooltip } },
-      { mark: { type: 'text', align: 'left', dx: 6, color: '#52514e', fontSize: 12 }, encoding: { x, y, text: { field: 'pct', format: '.1%' }, tooltip } },
-    ],
+    height: 300,
+    data: { values },
+    mark: { type: 'arc', stroke: '#ffffff', strokeWidth: 2 },
+    encoding: {
+      theta: { field: 'value', type: 'quantitative', stack: true },
+      order: { field: 'rank', type: 'quantitative' },
+      color: {
+        field: 'label', type: 'nominal', sort: labels, scale: { domain: labels, range },
+        legend: { orient: narrow ? 'bottom' : 'right', columns: 1, title: null, labelLimit: 260 },
+      },
+      tooltip: [
+        { field: 'category', title: 'Environmental site' },
+        { field: 'value', type: 'quantitative', title: 'Samples', format: ',' },
+        { field: 'pct', type: 'quantitative', title: 'Share', format: '.1%' },
+      ],
+    },
   };
 }
 
@@ -281,7 +286,7 @@ function breakdown() {
   panel(el, async () => {
     const rows = breakdownRows((await loadIndex()).envBuckets);
     el.innerHTML = '';
-    await embed(el, breakdownSpec(rows));
+    await embed(el, breakdownSpec(rows, el.clientWidth < 420));
     dataTable(document.getElementById('breakdown-table'),
       [{ key: 'category', label: 'Environmental site' }, { key: 'value', label: 'Samples' }],
       rows);

@@ -60,24 +60,25 @@
         <div id="explorer-table"></div>
       </section>
 
-      <!-- Metadata completeness (public/js/dashboard.js) -->
-      <section class="explore-panel" id="completeness">
+      <!-- viral:start (markup owned by public/js/viral.js) -->
+      <section class="viral-load-panel" id="viral">
+        <div id="viral-root"></div>
+      </section>
+      <!-- viral:end -->
+
+      <!-- QA panels: hidden unless the address has ?qa=1, loaded only on request (public/js/dashboard.js) -->
+      <section class="explore-panel" id="completeness" hidden>
         <header class="explore-header">
           <div class="explore-kicker">
             <span class="explore-badge">Data Quality</span>
             <h2 class="explore-kicker-text">Metadata completeness</h2>
           </div>
           <p class="explore-subtitle">How often each key field holds a real value, across all samples.</p>
+          <button type="button" id="completeness-load" class="retry-btn">Show metadata completeness</button>
         </header>
-        <div id="completeness-chart" class="completeness-chart"></div>
+        <div id="completeness-chart" class="completeness-chart" hidden></div>
         <div id="completeness-table"></div>
       </section>
-
-      <!-- viral:start (markup owned by public/js/viral.js) -->
-      <section class="viral-load-panel" id="viral">
-        <div id="viral-root"></div>
-      </section>
-      <!-- viral:end -->
     </main>
 
     <footer class="site-footer">

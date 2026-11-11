@@ -85,11 +85,11 @@ Proof of concept for demonstration only. Not for scientific interpretation. Chec
 | Panel | Shows and controls | Notes |
 |---|---|---|
 | Hero cards (At a Glance) | Samples, sites, active sites (last 12 months), organisms, data sources, latest sample | "Not Provided", "Not Applicable" and blank are not counted. |
-| Sampling Activity | Samples per month by organism; Monthly or Cumulative buttons | Up to 7 organisms coloured, rest "Other" (gray). |
-| Environmental Sites | Samples per site type and share | Top 8 plus "Other". |
-| Sample Coverage | One circle per site, size = samples, blue = active, gray = historical. Hover for details, click to open its viral loads | Sites without GPS sit at their province capital. Samples with no site are not shown (count under the map). Click the map once to enable scroll zoom. |
+| Samples Captured Over Time | Total samples to date (Cumulative, the default) or samples per month by organism (Monthly) | Monthly: up to 7 organisms coloured, rest "Other" (gray). |
+| Environmental Sites | Pie of samples per site type, share in the legend | Top 8 plus "Other". |
+| Sample Coverage | One circle per site, size = samples, blue = active, light blue = historical. Hover for details, click to open its viral loads | Sites without GPS sit at their province capital. Samples with no site are not shown (count under the map). Click the map once to enable scroll zoom. |
 | Sample breakdown | X axis and Segment By dropdowns, swap button, Count or Percent | Max 7 segments plus "Other". |
-| Metadata completeness | None | Per field: Recorded, Not provided or not applicable, Blank. Multivalued fields are approximate. |
+| Metadata completeness (QA, not public) | Hidden. Open `dashboard.html?qa=1`, scroll to the bottom, click Show metadata completeness | Per field: Recorded, Not provided or not applicable, Blank. Multivalued fields are approximate. Anyone who knows the address can open it; it is hidden, not protected. |
 | Viral loads | Province, City, Site, Organism, Gene Target, Measurement Unit; From and To dates; 3m, 6m, 12m, All; switches: line, full-series LOESS, PMMoV normalisation, log scale | RT-PCR only. Dots are the mean per date with error bars (SEM); the dashed line is a smoothed trend. Default: Alberta, Influenza A virus, last 12 months. "All" combines data without correcting for differences between labs. PMMoV normalisation awaits scientific sign-off and currently has data only for Ontario. |
 
 ## 5. Maintain

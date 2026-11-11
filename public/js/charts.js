@@ -49,9 +49,12 @@ export function failed(el, err, retry) {
   el.innerHTML = '';
   const box = document.createElement('div');
   box.className = 'panel-error';
-  box.innerHTML =
-    '<p>Could not load this from the data portal.</p>' +
-    '<p>Because this site is hosted on Cloudflare, it may be blocked by ad blockers. Please disable any ad blockers and try again.</p>';
+  // fetch() throws TypeError only when the request never got an answer (offline, blocked).
+  // An HTTP error (e.g. 404) got an answer, so an ad blocker isn't the cause.
+  box.innerHTML = err instanceof TypeError
+    ? '<p>Could not load this from the data portal.</p>' +
+      '<p>Because this site is hosted on Cloudflare, it may be blocked by ad blockers. Please disable any ad blockers and try again.</p>'
+    : '<p>Could not load this data. Please try again later.</p>';
   const detail = document.createElement('p');
   detail.className = 'panel-error-detail';
   detail.textContent = err?.message || String(err);

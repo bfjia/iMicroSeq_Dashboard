@@ -69,31 +69,33 @@
       </section>
       <p class="hero-error" id="hero-error" hidden></p>
 
-      <section class="panel panel-wide" id="activity">
-        <header class="panel-header panel-header-split">
-          <h2>Sampling Activity</h2>
-          <div class="segmented" role="group" aria-label="Show as">
-            <button type="button" id="activity-monthly" aria-pressed="true">Monthly</button>
-            <button type="button" id="activity-cumulative" aria-pressed="false">Cumulative</button>
-          </div>
-        </header>
-        <p class="panel-subtitle" id="activity-subtitle">Samples collected per month, by organism</p>
-        <div id="activity-chart" class="chart-activity"></div>
-        <div id="activity-table"></div>
-      </section>
+      <section class="panel-grid">
+        <section class="panel" id="activity">
+          <header class="panel-header panel-header-split">
+            <h2>Samples Captured Over Time</h2>
+            <div class="segmented" role="group" aria-label="Show as">
+              <button type="button" id="activity-cumulative" aria-pressed="true">Cumulative</button>
+              <button type="button" id="activity-monthly" aria-pressed="false">Monthly</button>
+            </div>
+          </header>
+          <p class="panel-subtitle" id="activity-subtitle">Total samples collected up to each month</p>
+          <div id="activity-chart" class="chart-activity"></div>
+          <div id="activity-table"></div>
+        </section>
 
-      <section class="panel panel-wide" id="breakdown">
-        <header class="panel-header">
-          <h2>Data Breakdown By Environmental Sites</h2>
-        </header>
-        <div id="breakdown-chart" class="chart-breakdown"></div>
-        <div id="breakdown-table"></div>
+        <section class="panel" id="breakdown">
+          <header class="panel-header">
+            <h2>Data Breakdown By Environmental Sites</h2>
+          </header>
+          <div id="breakdown-chart" class="chart-activity"></div>
+          <div id="breakdown-table"></div>
+        </section>
       </section>
 
       <section class="panel panel-wide" id="coverage">
         <header class="panel-header">
           <h2>Sample Coverage</h2>
-          <span class="panel-subtitle">One marker per sampling site. Click a site to see its viral loads.</span>
+          <span class="panel-subtitle">Sample density by sampling site</span>
         </header>
         <div id="coverage-chart" class="chart-large"></div>
         <p class="panel-note" id="coverage-note"></p>

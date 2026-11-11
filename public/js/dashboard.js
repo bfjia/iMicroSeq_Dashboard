@@ -1,5 +1,5 @@
-// Interactive Dashboard page: sample explorer and metadata completeness (live),
-// viral loads (nightly files, js/viral.js).
+// Interactive Dashboard page: sample explorer (live), viral loads (nightly files, js/viral.js),
+// and metadata completeness (live, QA only: shown with ?qa=1, loaded on click).
 import { gql, aliased, isIn, dateRange, years, months } from './api.js';
 import { trimBrackets, isNull, monthKey } from './rules.js';
 import {
@@ -280,7 +280,16 @@ function completeness() {
 // ─── Start ───────────────────────────────────────────────────────────────────
 
 explorer();
-whenVisible(document.getElementById('completeness'), completeness);
+// QA panel: only with ?qa=1 in the address, and only loaded when asked for.
+if (getParam('qa') === '1') {
+  document.getElementById('completeness').hidden = false;
+  const btn = document.getElementById('completeness-load');
+  btn.onclick = () => {
+    btn.hidden = true;
+    document.getElementById('completeness-chart').hidden = false;
+    completeness();
+  };
+}
 const viral = document.getElementById('viral');
 const startViral = () => initViral(document.getElementById('viral-root'));
 // Deep link from the map (?site=…#viral): load straight away instead of waiting for scroll.
