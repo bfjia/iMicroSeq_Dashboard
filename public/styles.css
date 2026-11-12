@@ -1018,9 +1018,14 @@ a {
   font-size: 0.75rem;
 }
 
-/* Marker holding several sites: one block per site */
+/* Marker holding several sites: one block per site, list scrolls (less than half the map's height) */
 .coverage-site {
   margin-top: 0.35rem;
+}
+
+.coverage-list {
+  max-height: 150px;
+  overflow-y: auto;
 }
 
 .coverage-popup .leaflet-popup-content {

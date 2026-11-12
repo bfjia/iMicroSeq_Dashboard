@@ -3,7 +3,6 @@ import { ACTIVE_COLOR, HISTORICAL_COLOR, ACTIVE_DAYS, MAP_VIRAL_MIN_SAMPLES } fr
 import { fmt } from './charts.js';
 
 const LEAFLET = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet';
-const TOOLTIP_SITES = 8; // a merged marker's hover list shows this many sites; the click list shows all
 
 function loadLeaflet() {
   if (window.L) return Promise.resolve();
@@ -95,13 +94,11 @@ export async function drawMap(el, sites) {
       if (linked.length) marker.on('click', () => { location.href = link(s); });
       continue;
     }
-    // Several sites: hover lists them (first few), click opens a list with a viral loads link per site.
-    const shown = p.sites.slice(0, TOOLTIP_SITES);
-    const more = p.sites.length - shown.length;
+    // Several sites: hover lists them all (the list scrolls), click opens a list with a viral loads link per site.
+    const scrolls = p.sites.length > 4 ? ' · scroll for more' : '';
     marker.bindTooltip(
-      `<span class="coverage-tooltip-hint">${p.sites.length} sites here · ${fmt(p.count)} samples</span>` +
-        shown.map((s) => `<div class="coverage-site">${line(s)}</div>`).join('') +
-        (more ? `<div class="coverage-site">+ ${more} more site${more === 1 ? '' : 's'}</div>` : '') +
+      `<span class="coverage-tooltip-hint">${p.sites.length} sites here · ${fmt(p.count)} samples${scrolls}</span>` +
+        `<div class="coverage-list">${p.sites.map((s) => `<div class="coverage-site">${line(s)}</div>`).join('')}</div>` +
         (linked.length ? '<span class="coverage-tooltip-hint">Click to see viral loads for these sites</span>' : ''),
       { direction: 'top', className: 'coverage-tooltip' },
     );
@@ -114,6 +111,26 @@ export async function drawMap(el, sites) {
     );
     marker.on('popupopen', () => marker.closeTooltip());
   }
+
+  // Tooltips open below markers in the top half of the map and above the rest, so they stay on the map.
+  // A tooltip ignores the mouse, so while one with a long site list is open the wheel scrolls that list.
+  let list = null;
+  map.on('tooltipopen', (e) => {
+    const t = e.tooltip;
+    const below = map.latLngToContainerPoint(t.getLatLng()).y < map.getSize().y / 2;
+    if (t.options.direction !== (below ? 'bottom' : 'top')) {
+      t.options.direction = below ? 'bottom' : 'top';
+      t.update();
+    }
+    list = t.getElement().querySelector('.coverage-list');
+  });
+  map.on('tooltipclose', () => { list = null; });
+  el.addEventListener('wheel', (e) => {
+    if (!list || list.scrollHeight <= list.clientHeight) return;
+    e.preventDefault();
+    e.stopPropagation(); // not a map zoom
+    list.scrollTop += e.deltaY;
+  }, { passive: false, capture: true });
 
   const legend = L.control({ position: 'bottomright' });
   legend.onAdd = () => {
