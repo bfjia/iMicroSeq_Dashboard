@@ -124,20 +124,32 @@ function sample(n, seed = 42) {
   return rows;
 }
 
-test('LOESS matches the old implementation exactly', () => {
+// The new trend is the old one clamped at 0 (loads can't be negative).
+const clamp0 = (rows) => rows.map((r) => Math.max(0, r.valueSmooth));
+
+test('LOESS matches the old implementation exactly (clamped at 0)', () => {
   for (const n of [0, 1, 2, 3, 4, 7, 25, 120, 400]) {
     const rows = sample(n, 7 + n);
     const old = oldAddSmoothingTrend(rows) ?? [];
     const neu = withTrend(rows);
-    assert.deepEqual(neu.map((r) => r.valueSmooth), old.map((r) => r.valueSmooth), `n=${n}`);
+    assert.deepEqual(neu.map((r) => r.valueSmooth), clamp0(old), `n=${n}`);
   }
 });
 
 test('full-series LOESS matches the old merge, windowed LOESS matches old on the window', () => {
   const full = sample(300, 3);
   const win = full.slice(180, 260);
-  assert.deepEqual(withTrend(win, full).map((r) => r.valueSmooth), oldMergeLoessFromFullSeries(win, full).map((r) => r.valueSmooth));
-  assert.deepEqual(withTrend(win).map((r) => r.valueSmooth), oldAddSmoothingTrend(win).map((r) => r.valueSmooth));
+  assert.deepEqual(withTrend(win, full).map((r) => r.valueSmooth), clamp0(oldMergeLoessFromFullSeries(win, full)));
+  assert.deepEqual(withTrend(win).map((r) => r.valueSmooth), clamp0(oldAddSmoothingTrend(win)));
+});
+
+test('trend never goes below zero', () => {
+  // Weekly Influenza A, Winnipeg South End, Nov 2025 - Oct 2026: the raw fit dips to about -1 at the start.
+  const v = [1.7, 2.6, 3.6, 12.7, 26.1, 34.2, 44, 44, 25.6, 8.6, 4.3, 3.3, 1.8, 1.1, 0.8, 0.8, 0.8, 1, 0.7, 1, 0, 0.3, 0.2, 0.4, 0.2, 0.6,
+    0.2, 0.2, 0, 0.2, 0, 0, 0.5, 0, 0, 0.2, 0, 0, 0.1, 0, 0, 0, 0, 0.2, 0, 0.6, 0.6, 0.8, 0.7, 1.1, 3.4, 2.7];
+  const rows = v.map((value, i) => ({ date: new Date(Date.UTC(2025, 10, 2 + 7 * i)).toISOString().slice(0, 10), value }));
+  assert.ok(Math.min(...loess(rows.map((r) => Date.parse(r.date)), v)) < 0, 'raw fit should undershoot');
+  assert.ok(withTrend(rows).every((r) => r.valueSmooth >= 0));
 });
 
 test('loess on raw arrays, including the lambda = 0 fallback', () => {
