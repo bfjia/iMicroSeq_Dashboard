@@ -1,10 +1,9 @@
-// Data quality checks for data stewards (Interactive Dashboard, not in the public view).
-// Loaded only when opened: footer button or ?qa=1. All live except "Viral measurement values",
-// which comes from the nightly build (data/viral/meta.json).
+// Data quality checks page (qa.html) for data stewards, linked from the Interactive Dashboard footer.
+// All live except "Viral measurement values", which comes from the nightly build (data/viral/meta.json).
 import { gql, aliased, isIn } from './api.js';
 import { trimBrackets, isNull, parseCoord } from './rules.js';
-import { COMPLETENESS_FIELDS, REQUIRED_FIELDS, QA_NAME_FIELDS, DATE_FIELD, ACTIVE_DAYS, PALETTE, OTHER_COLOR } from './config.js';
-import { embed, panel, dataTable, viralMeta, fmt } from './charts.js';
+import { COMPLETENESS_FIELDS, REQUIRED_FIELDS, QA_NAME_FIELDS, DATE_FIELD, ACTIVE_DAYS, PALETTE, OTHER_COLOR, SARS2_MAX } from './config.js';
+import { embed, panel, dataTable, viralMeta, fmt, setFooter } from './charts.js';
 
 const DAY = 86400000;
 const TODAY = Math.floor(Date.now() / DAY) * DAY;
@@ -72,7 +71,8 @@ async function completeness(el, tableEl) {
       ],
     },
   });
-  dataTable(tableEl, [{ key: 'field', label: 'Field' }, { key: 'state', label: 'Status' }, { key: 'n', label: 'Samples' }], rows);
+  dataTable(tableEl, [{ key: 'field', label: 'Field' }, { key: 'state', label: 'Status' }, { key: 'n', label: 'Samples' }], rows,
+    { file: 'qa-completeness' });
 }
 
 // ─── 2. Latest sample per data source ────────────────────────────────────────
@@ -110,7 +110,8 @@ async function freshness(el, tableEl) {
       ],
     },
   });
-  dataTable(tableEl, [{ key: 'name', label: 'Collecting organisation' }, { key: 'latest', label: 'Latest sample' }, { key: 'n', label: 'Samples' }], rows);
+  dataTable(tableEl, [{ key: 'name', label: 'Collecting organisation' }, { key: 'latest', label: 'Latest sample' }, { key: 'n', label: 'Samples' }], rows,
+    { file: 'qa-latest-sample' });
 }
 
 // ─── 3. Values written more than one way ─────────────────────────────────────
@@ -141,7 +142,7 @@ async function names(el) {
   el.innerHTML = rows.length ? '' : '<p class="qa-ok">No problems found.</p>';
   if (rows.length) {
     dataTable(el, [{ key: 'field', label: 'Field' }, { key: 'issue', label: 'Issue' }, { key: 'values', label: 'Values (samples)' }, { key: 'n', label: 'Samples' }],
-      rows, { open: true, title: `${rows.length} value${rows.length === 1 ? '' : 's'} to fix` });
+      rows, { open: true, title: `${rows.length} value${rows.length === 1 ? '' : 's'} to fix`, file: 'qa-spellings' });
   }
 }
 
@@ -188,7 +189,8 @@ async function locations(el, tableEl) {
   note.className = 'qa-note';
   note.textContent = `${fmt(noSite)} samples have no site recorded; ${fmt(noProv)} have no province/territory recorded.`;
   el.append(note);
-  dataTable(tableEl, [{ key: 'province', label: 'Province/Territory' }, { key: 'status', label: 'Status' }, { key: 'n', label: 'Sites' }], rows);
+  dataTable(tableEl, [{ key: 'province', label: 'Province/Territory' }, { key: 'status', label: 'Status' }, { key: 'n', label: 'Sites' }], rows,
+    { file: 'qa-locations' });
 }
 
 // ─── 5. Viral measurement values (nightly build) ─────────────────────────────
@@ -204,7 +206,7 @@ async function measurements(el, tableEl) {
     ['Plotted', q.plotted, OK],
     ['Not provided / blank', q.missing, OTHER_COLOR],
     ['Text, not a number', q.text, ISSUE],
-    ['SARS-CoV-2 above the cap (dropped)', q.capped, PALETTE[3]],
+    [`SARS-CoV-2 above the cap (>${SARS2_MAX})`, q.capped, PALETTE[3]],
   ];
   const total = cats.reduce((s, c) => s + c[1], 0);
   let start = 0;
@@ -235,7 +237,7 @@ async function measurements(el, tableEl) {
     ...q.units.map(([v, n]) => ({ kind: 'Unit of plotted values', value: v, n })),
   ];
   dataTable(tableEl, [{ key: 'kind', label: 'Kind' }, { key: 'value', label: 'Value' }, { key: 'n', label: 'Measurements' }], table,
-    { title: 'Show most common text values and units' });
+    { title: 'Show most common text values and units', file: 'qa-viral-values' });
 }
 
 // ─── Start ───────────────────────────────────────────────────────────────────
@@ -248,14 +250,13 @@ const CHECKS = [
   ['Viral measurement values', 'Why RT-PCR measurements are or are not plotted. From the nightly build.', measurements],
 ];
 
-export function initQA(root) {
-  if (root.childElementCount) return; // already built
-  for (const [title, sub, run] of CHECKS) {
-    const block = document.createElement('div');
-    block.className = 'qa-block';
-    block.innerHTML = `<h3>${title}</h3><p class="qa-sub">${sub}</p><div class="qa-chart"></div><div class="qa-table"></div>`;
-    root.append(block);
-    const chart = block.querySelector('.qa-chart');
-    panel(chart, () => run(chart, block.querySelector('.qa-table')));
-  }
+const root = document.getElementById('qa-root');
+for (const [title, sub, run] of CHECKS) {
+  const block = document.createElement('div');
+  block.className = 'qa-block';
+  block.innerHTML = `<h3>${title}</h3><p class="qa-sub">${sub}</p><div class="qa-chart"></div><div class="qa-table"></div>`;
+  root.append(block);
+  const chart = block.querySelector('.qa-chart');
+  panel(chart, () => run(chart, block.querySelector('.qa-table')));
 }
+setFooter();

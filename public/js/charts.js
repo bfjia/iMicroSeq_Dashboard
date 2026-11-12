@@ -34,8 +34,11 @@ export const fmt = (n) => (n == null || !Number.isFinite(n) ? '–' : Number(n).
 
 // ─── Panel states ────────────────────────────────────────────────────────────
 
+// Animated loading circle, used in panels, hero cards and the footer.
+export const SPINNER = '<span class="spinner" role="status" aria-label="Loading"></span>';
+
 function loading(el) {
-  el.innerHTML = '<div class="skeleton" aria-busy="true"><span>Loading…</span></div>';
+  el.innerHTML = `<div class="panel-loading" aria-busy="true">${SPINNER}</div>`;
 }
 
 export function failed(el, err, retry) {
@@ -85,12 +88,44 @@ export function whenVisible(el, fn) {
 
 // ─── Data table under a chart (for readers who can't use the colours) ────────
 
-export function dataTable(el, columns, rows, { open = false, title = 'Show data table' } = {}) {
+// One CSV cell. Text starting like a formula gets a ' so spreadsheets show it as text.
+function csvCell(v) {
+  let s = v == null ? '' : String(v);
+  if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s) && !Number.isFinite(Number(s))) s = `'${s}`;
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+export function toCsv(columns, rows) {
+  const lines = [columns.map((c) => csvCell(c.label)), ...rows.map((r) => columns.map((c) => csvCell(r[c.key])))];
+  return lines.map((l) => l.join(',')).join('\r\n');
+}
+
+function download(name, text) {
+  const url = URL.createObjectURL(new Blob(['\ufeff', text], { type: 'text/csv;charset=utf-8' })); // BOM: Excel reads UTF-8
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// file: download name without extension (default: the element id, e.g. "explorer-table").
+export function dataTable(el, columns, rows, { open = false, title = 'Show data table', file } = {}) {
   el.innerHTML = '';
   const det = document.createElement('details');
   det.className = 'data-table';
   const sum = document.createElement('summary');
   sum.textContent = title;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'csv-btn';
+  btn.textContent = 'Download CSV';
+  btn.onclick = (e) => {
+    e.preventDefault(); // don't open/close the table
+    const today = new Date().toISOString().slice(0, 10);
+    download(`imicroseq-${file || el.id || 'data'}-${today}.csv`, toCsv(columns, rows));
+  };
+  sum.append(btn);
   const wrap = document.createElement('div');
   wrap.className = 'data-table-wrap';
   const table = document.createElement('table');

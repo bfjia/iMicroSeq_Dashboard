@@ -1,8 +1,9 @@
-// Coverage map: Leaflet (loaded only when needed), Canada outline, one marker per site.
+// Coverage map: Leaflet (loaded only when needed), Canada outline, one marker per location.
 import { ACTIVE_COLOR, HISTORICAL_COLOR, ACTIVE_DAYS } from './config.js';
 import { fmt } from './charts.js';
 
 const LEAFLET = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet';
+const TOOLTIP_SITES = 8; // a merged marker's hover list shows this many sites; the click list shows all
 
 function loadLeaflet() {
   if (window.L) return Promise.resolve();
@@ -53,11 +54,10 @@ export async function drawMap(el, sites) {
     L.geoJSON(outline, { style: { fillColor: '#D80621', color: '#a00', weight: 1.5, fillOpacity: 0.08 }, interactive: false }).addTo(map);
   }
 
+  // Sites at the same spot (e.g. several placed at one province capital) share one marker.
   let approx = 0;
-  const max = Math.max(1, ...sites.map((s) => s.count));
-  // Historical first so active sites draw on top.
-  const ordered = [...sites].sort((a, b) => a.active - b.active || b.count - a.count);
-  for (const s of ordered) {
+  const spots = new Map();
+  for (const s of sites) {
     let { lat, lon } = s;
     if (lat == null || lon == null) {
       const cap = caps[s.province];
@@ -65,21 +65,51 @@ export async function drawMap(el, sites) {
       [lat, lon] = cap;
       approx++;
     }
-    const marker = L.circleMarker([lat, lon], {
-      radius: 4 + 12 * Math.sqrt(s.count / max),
-      fillColor: s.active ? ACTIVE_COLOR : HISTORICAL_COLOR,
-      fillOpacity: s.active ? 0.85 : 0.75,
+    const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+    if (!spots.has(key)) spots.set(key, { lat, lon, sites: [], count: 0, active: false });
+    const p = spots.get(key);
+    p.sites.push(s);
+    p.count += s.count;
+    p.active ||= s.active;
+  }
+
+  const max = Math.max(1, ...[...spots.values()].map((p) => p.count));
+  // Historical first so active spots draw on top.
+  const ordered = [...spots.values()].sort((a, b) => a.active - b.active || b.count - a.count);
+  for (const p of ordered) {
+    p.sites.sort((a, b) => b.count - a.count);
+    const marker = L.circleMarker([p.lat, p.lon], {
+      radius: 3.2 + 9.6 * Math.sqrt(p.count / max),
+      fillColor: p.active ? ACTIVE_COLOR : HISTORICAL_COLOR,
+      fillOpacity: p.active ? 0.85 : 0.75,
       color: '#ffffff', // surface ring so overlapping markers stay distinct
       weight: 1.5,
     }).addTo(map);
+    const line = (s) => `<strong>${escapeHtml(s.name)}</strong><br>${fmt(s.count)} samples · ${s.active ? 'Active' : 'Historical'}`;
+    const link = (s) => `dashboard.html?site=${encodeURIComponent(s.name)}#viral`;
+    if (p.sites.length === 1) {
+      const s = p.sites[0];
+      marker.bindTooltip(`${line(s)}<br><span class="coverage-tooltip-hint">Click to see viral loads for this site</span>`,
+        { direction: 'top', className: 'coverage-tooltip' });
+      marker.on('click', () => { location.href = link(s); });
+      continue;
+    }
+    // Several sites: hover lists them (first few), click opens a list with a viral loads link per site.
+    const shown = p.sites.slice(0, TOOLTIP_SITES);
+    const more = p.sites.length - shown.length;
     marker.bindTooltip(
-      `<strong>${escapeHtml(s.name)}</strong><br>${fmt(s.count)} samples · ${s.active ? 'Active' : 'Historical'}` +
-        `<br><span class="coverage-tooltip-hint">Click to see viral loads for this site</span>`,
+      `<span class="coverage-tooltip-hint">${p.sites.length} sites here · ${fmt(p.count)} samples</span>` +
+        shown.map((s) => `<div class="coverage-site">${line(s)}</div>`).join('') +
+        (more ? `<div class="coverage-site">+ ${more} more site${more === 1 ? '' : 's'}</div>` : '') +
+        '<span class="coverage-tooltip-hint">Click to see viral loads for these sites</span>',
       { direction: 'top', className: 'coverage-tooltip' },
     );
-    marker.on('click', () => {
-      location.href = `dashboard.html?site=${encodeURIComponent(s.name)}#viral`;
-    });
+    marker.bindPopup(
+      `<span class="coverage-tooltip-hint">${p.sites.length} sites here · ${fmt(p.count)} samples</span>` +
+        p.sites.map((s) => `<div class="coverage-site">${line(s)}<br><a href="${link(s)}">See viral loads for this site</a></div>`).join(''),
+      { className: 'coverage-popup', maxHeight: 300 },
+    );
+    marker.on('popupopen', () => marker.closeTooltip());
   }
 
   const legend = L.control({ position: 'bottomright' });

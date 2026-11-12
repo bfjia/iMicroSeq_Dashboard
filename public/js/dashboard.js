@@ -1,5 +1,5 @@
-// Interactive Dashboard page: sample explorer (live), viral loads (nightly files, js/viral.js),
-// and data quality checks (js/qa.js, opened from the footer or with ?qa=1).
+// Interactive Dashboard page: sample explorer (live) and viral loads (nightly files, js/viral.js).
+// Data quality checks are their own page (qa.html, js/qa.js), linked from the footer.
 import { gql, aliased, isIn, dateRange, years, months } from './api.js';
 import { trimBrackets, monthKey } from './rules.js';
 import {
@@ -129,8 +129,21 @@ function shape(rows, x, seg) {
   return { rows: out, order, xOrder };
 }
 
+// Tiny segments (e.g. 50 samples next to 200k) would be thinner than the white gap between
+// segments and show no colour. Draw each at least this share of the tallest bar (or of its own
+// bar in Percent): ~3 px. Tooltips and the data table keep the true counts.
+const MIN_SHARE = 0.006;
+
 function explorerSpec({ rows, order, xOrder }, x, seg, pct, narrow) {
   const time = isTime(x);
+  const xTotals = new Map();
+  for (const r of rows) xTotals.set(r.x, (xTotals.get(r.x) || 0) + r.n);
+  const tallest = Math.max(...xTotals.values());
+  const values = rows.map((r) => ({
+    ...r,
+    shown: Math.max(r.n, MIN_SHARE * (pct ? xTotals.get(r.x) : tallest)),
+    desc: `${r.x}, ${r.seg}: ${r.n.toLocaleString('en-CA')} samples`, // screen readers: true count
+  }));
   const unit = x === 'Year' ? 'utcyear' : 'utcyearmonth';
   const xEnc = time
     ? { field: 'x', type: 'temporal', timeUnit: unit, title: null, axis: { format: x === 'Year' ? '%Y' : '%b %Y', labelOverlap: true, grid: false } }
@@ -139,18 +152,19 @@ function explorerSpec({ rows, order, xOrder }, x, seg, pct, narrow) {
   return {
     width: 'container',
     height: 480,
-    data: { values: rows },
+    data: { values },
     mark: { type: 'bar', ...(time && x !== 'Year' ? { strokeWidth: 0 } : {}) }, // monthly bars too thin for a gap
     encoding: {
       x: xEnc,
       y: {
-        aggregate: 'sum', field: 'n', type: 'quantitative', stack: pct ? 'normalize' : 'zero',
+        aggregate: 'sum', field: 'shown', type: 'quantitative', stack: pct ? 'normalize' : 'zero',
         title: pct ? 'Share of samples' : 'Samples', axis: { format: pct ? '.0%' : '~s' },
       },
       color: single
         ? { value: PALETTE[0] }
         : { field: 'seg', type: 'nominal', sort: order, scale: colorScale(order), legend: { title: label(seg), orient: narrow ? 'bottom' : 'right', columns: narrow ? 1 : undefined, labelLimit: 360 } },
       order: { field: 'rank', type: 'quantitative' },
+      description: { field: 'desc' },
       tooltip: [
         time ? { field: 'x', type: 'temporal', timeUnit: unit, title: label(x), format: x === 'Year' ? '%Y' : '%B %Y' } : { field: 'x', title: label(x) },
         ...(single ? [] : [{ field: 'seg', title: label(seg) }]),
@@ -204,27 +218,10 @@ function explorer() {
   draw();
 }
 
-// ─── Data quality checks (public/js/qa.js, loaded only when opened) ──────────
-
-function qa(open) {
-  const section = document.getElementById('qa');
-  const btn = document.getElementById('footer-qa');
-  section.hidden = !open;
-  btn.textContent = open ? 'Hide data quality checks' : 'Show data quality checks';
-  setParams({ qa: open ? '1' : null });
-  if (open) import('./qa.js').then((m) => m.initQA(document.getElementById('qa-root')));
-  return section;
-}
-
 // ─── Start ───────────────────────────────────────────────────────────────────
 
+if (getParam('qa') === '1') location.replace('qa.html'); // old links: checks used to live on this page
 explorer();
-document.getElementById('footer-qa').onclick = () => {
-  const open = document.getElementById('qa').hidden;
-  const section = qa(open);
-  if (open) section.scrollIntoView({ behavior: 'smooth' });
-};
-if (getParam('qa') === '1') qa(true);
 const viral = document.getElementById('viral');
 const startViral = () => initViral(document.getElementById('viral-root'));
 // Deep link from the map (?site=…#viral): load straight away instead of waiting for scroll.

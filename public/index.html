@@ -38,32 +38,32 @@
       <section class="hero-cards" id="hero" aria-live="polite">
         <article class="hero-card">
           <div class="hero-label">Samples</div>
-          <div class="hero-value" id="hero-samples">–</div>
+          <div class="hero-value" id="hero-samples"><span class="spinner" role="status" aria-label="Loading"></span></div>
           <div class="hero-subtext">Environmental Samples</div>
         </article>
         <article class="hero-card">
           <div class="hero-label">Sites</div>
-          <div class="hero-value" id="hero-sites">–</div>
+          <div class="hero-value" id="hero-sites"><span class="spinner" role="status" aria-label="Loading"></span></div>
           <div class="hero-subtext">Sampling Sites</div>
         </article>
         <article class="hero-card">
           <div class="hero-label">Active Sites</div>
-          <div class="hero-value" id="hero-active">–</div>
+          <div class="hero-value" id="hero-active"><span class="spinner" role="status" aria-label="Loading"></span></div>
           <div class="hero-subtext">Sampled in the Last 12 Months</div>
         </article>
         <article class="hero-card">
           <div class="hero-label">Organisms</div>
-          <div class="hero-value" id="hero-organisms">–</div>
+          <div class="hero-value" id="hero-organisms"><span class="spinner" role="status" aria-label="Loading"></span></div>
           <div class="hero-subtext">Species Detected,<br>Plus Metagenomic Samples</div>
         </article>
         <article class="hero-card">
           <div class="hero-label">Data Sources</div>
-          <div class="hero-value" id="hero-sources">–</div>
+          <div class="hero-value" id="hero-sources"><span class="spinner" role="status" aria-label="Loading"></span></div>
           <div class="hero-subtext">Organisations Collecting Samples</div>
         </article>
         <article class="hero-card">
           <div class="hero-label">Latest Sample</div>
-          <div class="hero-value hero-value-date" id="hero-latest">–</div>
+          <div class="hero-value hero-value-date" id="hero-latest"><span class="spinner" role="status" aria-label="Loading"></span></div>
           <div class="hero-subtext">Most Recent Collection Date</div>
         </article>
       </section>
@@ -109,7 +109,7 @@
       <p>Data: <a href="https://imicroseq-dataportal.ca/">Canadian iMicroSeq Data Portal</a>.</p>
       <p>
         Data is fetched live for all except for the viral load graph, however it is cached by up to 1 hour<span id="footer-fetched"></span>.
-        Viral loads data refreshed nightly, current data is from <span id="footer-viral-asof">…</span>.
+        Viral loads data refreshed nightly, current data is from <span id="footer-viral-asof"><span class="spinner spinner-small" role="status" aria-label="Loading"></span></span>.
       </p>
       <p><a id="footer-help" href="#">How to use this dashboard</a></p>
     </footer>
