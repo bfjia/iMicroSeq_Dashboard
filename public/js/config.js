@@ -104,7 +104,7 @@ export const OTHER_COLOR = '#B8BEC9';
 // Map markers: active sites in brand blue, historical in a lighter shade of it.
 export const ACTIVE_COLOR = '#4A63E7';
 export const HISTORICAL_COLOR = '#A9B7F4';
-// Map: sites with fewer samples than this get no "see viral loads" link or click-through.
+// Map: sites with fewer samples than this get no "Visualize this site's viral load" link.
 export const MAP_VIRAL_MIN_SAMPLES = 10;
 // Map: every site also links to its records in the portal explorer (?filters=<SQON>).
 export const PORTAL_EXPLORER_URL = 'https://imicroseq-dataportal.ca/explorer/environmental';
