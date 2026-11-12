@@ -328,7 +328,6 @@ function markup() {
     </div>
     <p class="explore-subtitle viral-load-smoothing-note">
       The gray dashed trend line is LOESS-smoothed (polynomial degree ${LOESS_DEGREE}, span ${LOESS_SPAN}).<br>By default it fits across all data matching your filters. Turn off Full-series LOESS to smooth only across the visible date window.
-      The trend is drawn as a smooth curve and is never shown below zero.
     </p>
     <p id="viral-all-filter-warning" class="viral-all-filter-warning explore-subtitle" hidden aria-live="polite"></p>
     <div id="viral-load-chart" class="viral-load-chart"></div>
