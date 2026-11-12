@@ -97,11 +97,6 @@ body {
   text-decoration: underline;
 }
 
-.header-chevron {
-  font-size: 0.6em;
-  opacity: 0.9;
-}
-
 /* --- Main content area --- */
 .page {
   max-width: 1120px;
@@ -138,19 +133,6 @@ body {
   display: block;
 }
 
-.page-title-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.page-title-icon svg {
-  width: 2.25rem;
-  height: 2.25rem;
-  color: #c41e3a;
-}
-
 .page-title-text {
   margin: 0;
   font-size: clamp(1.35rem, 4vw, 1.85rem);
@@ -168,14 +150,7 @@ body {
   text-align: center;
 }
 
-.section-divider {
-  border: 0;
-  height: 0;
-  border-top: 1px solid #d7deef;
-  margin: 2.5rem 0;
-}
-
-/* --- Hero summary cards (4-column grid) --- */
+/* --- Hero summary cards (3-column grid) --- */
 .hero-cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -213,7 +188,7 @@ body {
   color: #9ca3af;
 }
 
-/* --- Chart panels (growth, breakdown, coverage) --- */
+/* --- Chart panels (coverage, samples over time, environmental sites) --- */
 .panel {
   background: #ffffff;
   border-radius: 14px;
@@ -223,7 +198,6 @@ body {
 }
 
 .panel-wide {
-  /* Full-width panel for coverage map */
   margin-bottom: 1.75rem;
 }
 
@@ -265,12 +239,6 @@ body {
   border: 1px solid #e1e4ee;
   border-radius: 6px;
 }
-
-.chart-medium {
-  height: 220px;
-  width: 100%;
-}
-
 
 /* --- Explore section: kicker, subtitle, axis selects, chart, CTAs --- */
 .explore-header {
@@ -338,22 +306,7 @@ body {
   box-sizing: border-box;
 }
 
-.explore-content {
-  /* Wrapper for chart area + action buttons */
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  width: 100%;
-}
-
-.explore-chart-area {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  width: 100%;
-}
-
-/* Row of dropdowns: Plot type, X axis, Segment By */
+/* Row of explorer controls: X axis, swap, Segment by, Count/Percent */
 .axis-selects {
   display: flex;
   flex-wrap: wrap;
@@ -402,8 +355,7 @@ body {
   height: 640px;
 }
 
-/* Viral loads section (public/js/viral.js). To merge into styles.css: these replace the
-   .viral-* rules there; the .viral-date-dual-slider rules in styles.css can be deleted. */
+/* Viral loads section (public/js/viral.js) */
 
 .viral-load-panel {
   background: linear-gradient(180deg, rgba(26, 47, 74, 0.06), rgba(255, 255, 255, 0));
@@ -657,24 +609,6 @@ body {
   .viral-filter-row .viral-field-select {
     flex: 1 1 140px;
   }
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.sample-caption {
-  font-size: 0.75rem;
-  color: #9ca3af;
-  text-align: center;
 }
 
 .explore-actions {
@@ -1045,11 +979,7 @@ a {
 }
 
 @media (max-width: 640px) {
-  /* Single-column hero cards; reduced page padding */
-  .top-bar {
-    padding: 0.85rem 1.25rem;
-  }
-
+  /* Reduced page padding */
   .page {
     padding: 0 1rem 2.5rem;
   }
