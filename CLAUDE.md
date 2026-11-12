@@ -21,6 +21,7 @@ Proof-of-concept dashboard for the [Canadian iMicroSeq Data Portal](https://imic
 | `public/js/charts.js` | Vega-Lite config, panel loading/error states, data tables, URL state, footer |
 | `public/js/index.js`, `public/js/map.js` | At a Glance page |
 | `public/js/dashboard.js`, `public/js/viral.js` | Interactive Dashboard page |
+| `public/js/qa.js` | Data quality checks (hidden; footer button or `?qa=1`) |
 | `scripts/build-viral-loads.mjs` | Nightly build of `public/data/viral/` (gitignored) |
 | `test/` | `node:test` unit tests, including a docs path check |
 

@@ -53,6 +53,31 @@ export const COMPLETENESS_FIELDS = {
   diagnostic_measurement_unit_1: 'Measurement unit (target 1)',
   gene_symbol_1: 'Gene symbol (target 1)',
   water_catchment_area_human_population_measurement_value: 'Catchment population',
+  geo_loc_name_country: 'Country',
+};
+
+// Fields the data specification marks as required (data_specification/fields.tsv, required = TRUE).
+// Marked "(required)" in the QA completeness chart. Sequencing-only required fields are left out:
+// they are "Not Applicable" for RT-PCR samples by design.
+export const REQUIRED_FIELDS = [
+  'organism', 'purpose_of_sampling', 'sample_collected_by_organisation_name',
+  'sample_collection_start_date', 'geo_loc_name_country', 'geo_loc_name_state_province_territory',
+];
+
+// QA: fields checked for values written more than one way ("Barrie" / "BARRIE"),
+// and for several values packed into one ("Lab A;Lab B").
+export const QA_NAME_FIELDS = {
+  geo_loc_name_site: 'Site',
+  geo_loc_name_city: 'City',
+  geo_loc_name_state_province_territory: 'Province/Territory',
+  sample_collected_by_organisation_name: 'Collecting organisation',
+  environmental_site: 'Environmental site',
+  environmental_material: 'Environmental material',
+  collection_device: 'Collection device',
+  collection_method: 'Collection method',
+  organism: 'Organism',
+  gene_symbol_1: 'Gene symbol (target 1)',
+  diagnostic_measurement_unit_1: 'Measurement unit (target 1)',
 };
 
 // Values that mean "no real value" (compared after removing the [ontology id]).

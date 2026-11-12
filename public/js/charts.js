@@ -91,12 +91,12 @@ export function whenVisible(el, fn) {
 
 // ─── Data table under a chart (for readers who can't use the colours) ────────
 
-export function dataTable(el, columns, rows) {
+export function dataTable(el, columns, rows, { open = false, title = 'Show data table' } = {}) {
   el.innerHTML = '';
   const det = document.createElement('details');
   det.className = 'data-table';
   const sum = document.createElement('summary');
-  sum.textContent = 'Show data table';
+  sum.textContent = title;
   const wrap = document.createElement('div');
   wrap.className = 'data-table-wrap';
   const table = document.createElement('table');
@@ -121,6 +121,7 @@ export function dataTable(el, columns, rows) {
   wrap.append(table);
   det.append(sum, wrap);
   el.append(det);
+  det.open = open; // fires toggle, which fills the rows
 }
 
 // ─── URL state (shared by explorer and viral loads: each touches only its own keys) ──
@@ -138,15 +139,16 @@ export function setParams(obj) {
 
 // ─── Footer ──────────────────────────────────────────────────────────────────
 
-// Viral build date from the tiny meta.json written by the nightly build (fetched once per page).
-let viralMeta;
-function viralDate() {
-  viralMeta ??= fetch('data/viral/meta.json', { cache: 'no-cache' })
+// Tiny meta.json written by the nightly build: date for the footer, counts for the QA panel.
+// Fetched once per page; null if missing.
+let metaPromise;
+export function viralMeta() {
+  metaPromise ??= fetch('data/viral/meta.json', { cache: 'no-cache' })
     .then((r) => (r.ok ? r.json() : null))
-    .then((m) => (m ? new Date(m.generatedAt).toLocaleDateString('en-CA', { dateStyle: 'medium' }) : 'unavailable'))
-    .catch(() => 'unavailable');
-  return viralMeta;
+    .catch(() => null);
+  return metaPromise;
 }
+const viralDate = () => viralMeta().then((m) => (m ? new Date(m.generatedAt).toLocaleDateString('en-CA', { dateStyle: 'medium' }) : 'unavailable'));
 
 export function setFooter() {
   const f = document.getElementById('footer-fetched');

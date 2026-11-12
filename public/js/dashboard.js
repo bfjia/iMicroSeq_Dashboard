@@ -1,9 +1,9 @@
 // Interactive Dashboard page: sample explorer (live), viral loads (nightly files, js/viral.js),
-// and metadata completeness (live, QA only: shown with ?qa=1, loaded on click).
+// and data quality checks (js/qa.js, opened from the footer or with ?qa=1).
 import { gql, aliased, isIn, dateRange, years, months } from './api.js';
-import { trimBrackets, isNull, monthKey } from './rules.js';
+import { trimBrackets, monthKey } from './rules.js';
 import {
-  DATE_FIELD, EXPLORER_FIELDS, EXPLORER_DEFAULT_X, EXPLORER_DEFAULT_SEGMENT, EXPLORER_TOP_N, COMPLETENESS_FIELDS, PALETTE, OTHER_COLOR,
+  DATE_FIELD, EXPLORER_FIELDS, EXPLORER_DEFAULT_X, EXPLORER_DEFAULT_SEGMENT, EXPLORER_TOP_N, PALETTE,
 } from './config.js';
 import { embed, panel, whenVisible, dataTable, colorScale, getParam, setParams, setFooter } from './charts.js';
 import { initViral } from './viral.js';
@@ -11,12 +11,7 @@ import { initViral } from './viral.js';
 const DAY = 86400000;
 const TIME = { Year: years, 'Year-Month': months };
 const isTime = (f) => f in TIME;
-const label = (f) => EXPLORER_FIELDS[f] || COMPLETENESS_FIELDS[f] || f;
-// Fields the API stores as numbers/dates: they have stats, not buckets.
-const NUMERIC = new Set([
-  'sample_collection_start_date', 'sample_collection_end_date', 'presampling_activity_date', 'sequencing_date',
-  'amplicon_size', 'host_age', 'water_catchment_area_human_population_measurement_value',
-]);
+const label = (f) => EXPLORER_FIELDS[f] || f;
 
 // ─── Explorer ────────────────────────────────────────────────────────────────
 
@@ -209,87 +204,27 @@ function explorer() {
   draw();
 }
 
-// ─── Metadata completeness ───────────────────────────────────────────────────
+// ─── Data quality checks (public/js/qa.js, loaded only when opened) ──────────
 
-const STATES = ['Recorded', 'Not provided / not applicable', 'Blank'];
-
-async function completenessRows() {
-  const fields = Object.keys(COMPLETENESS_FIELDS);
-  const q = `{ analysis { hits(first: 0) { total } aggregations(aggregations_filter_themselves: true, include_missing: true) {
-    ${fields.map((f) => (NUMERIC.has(f) ? `data__${f} { stats { count } }` : `data__${f} { buckets(max: 5000) { key doc_count } }`)).join('\n')}
-  } } }`;
-  const { analysis: a } = await gql(q);
-  const total = a.hits.total;
-  const rows = [];
-  for (const f of fields) {
-    const agg = a.aggregations[`data__${f}`];
-    let recorded = 0;
-    let nulls = 0;
-    if (NUMERIC.has(f)) recorded = agg.stats.count;
-    else {
-      for (const b of agg.buckets) {
-        if (b.key === '__missing__') continue;
-        if (isNull(b.key)) nulls += b.doc_count;
-        else recorded += b.doc_count;
-      }
-    }
-    // Multivalued fields can list a sample under several values: count each sample once.
-    recorded = Math.min(recorded, total);
-    nulls = Math.min(nulls, total - recorded);
-    const blank = total - recorded - nulls;
-    const field = COMPLETENESS_FIELDS[f];
-    [recorded, nulls, blank].forEach((n, i) => rows.push({ field, state: STATES[i], rank: i, n, pct: n / total, recordedPct: recorded / total }));
-  }
-  return { rows, total };
-}
-
-function completenessSpec(rows, narrow) {
-  const order = [...new Set(rows.slice().sort((a, b) => b.recordedPct - a.recordedPct).map((r) => r.field))];
-  return {
-    width: 'container',
-    height: { step: 26 },
-    data: { values: rows },
-    mark: { type: 'bar', height: { band: 0.72 } },
-    encoding: {
-      y: { field: 'field', type: 'nominal', sort: order, title: null, axis: { labelLimit: 240 } },
-      x: { aggregate: 'sum', field: 'n', type: 'quantitative', stack: 'normalize', title: 'Share of all samples', axis: { format: '.0%' } },
-      color: { field: 'state', type: 'nominal', sort: STATES, scale: { domain: STATES, range: [PALETTE[0], PALETTE[1], OTHER_COLOR] }, legend: { orient: narrow ? 'bottom' : 'top', columns: narrow ? 1 : undefined, title: null, labelLimit: 300 } },
-      order: { field: 'rank', type: 'quantitative' },
-      tooltip: [
-        { field: 'field', title: 'Field' },
-        { field: 'state', title: 'Status' },
-        { aggregate: 'sum', field: 'n', type: 'quantitative', title: 'Samples', format: ',' },
-        { aggregate: 'sum', field: 'pct', type: 'quantitative', title: 'Share', format: '.1%' },
-      ],
-    },
-  };
-}
-
-function completeness() {
-  const el = document.getElementById('completeness-chart');
-  panel(el, async () => {
-    const { rows } = await completenessRows();
-    el.innerHTML = '';
-    await embed(el, completenessSpec(rows, el.clientWidth < 600));
-    dataTable(document.getElementById('completeness-table'),
-      [{ key: 'field', label: 'Field' }, { key: 'state', label: 'Status' }, { key: 'n', label: 'Samples' }],
-      rows);
-  });
+function qa(open) {
+  const section = document.getElementById('qa');
+  const btn = document.getElementById('footer-qa');
+  section.hidden = !open;
+  btn.textContent = open ? 'Hide data quality checks' : 'Show data quality checks';
+  setParams({ qa: open ? '1' : null });
+  if (open) import('./qa.js').then((m) => m.initQA(document.getElementById('qa-root')));
+  return section;
 }
 
 // ─── Start ───────────────────────────────────────────────────────────────────
 
 explorer();
-// QA panel: only with ?qa=1 in the address, and only loaded when asked for.
-if (getParam('qa') === '1') {
-  document.getElementById('completeness').hidden = false;
-  const btn = document.getElementById('completeness-load');
-  btn.onclick = () => {
-    btn.hidden = true;
-    document.getElementById('completeness-chart').hidden = false;
-    completeness();
-  };
-}
+document.getElementById('footer-qa').onclick = () => {
+  const open = document.getElementById('qa').hidden;
+  const section = qa(open);
+  if (open) section.scrollIntoView({ behavior: 'smooth' });
+};
+if (getParam('qa') === '1') qa(true);
 const viral = document.getElementById('viral');
 const startViral = () => initViral(document.getElementById('viral-root'));
 // Deep link from the map (?site=…#viral): load straight away instead of waiting for scroll.

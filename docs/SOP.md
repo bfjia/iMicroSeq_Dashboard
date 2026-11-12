@@ -89,7 +89,7 @@ Proof of concept for demonstration only. Not for scientific interpretation. Chec
 | Environmental Sites | One bar split by site type, share in the legend | Top 8 plus "Other". |
 | Sample Coverage | One circle per site, size = samples, blue = active, light blue = historical. Hover for details, click to open its viral loads | Sites without GPS sit at their province capital. Samples with no site are not shown. Click the map once to enable scroll zoom. |
 | Sample breakdown | X axis and Segment By dropdowns, swap button, Count or Percent | Max 7 segments plus "Other". |
-| Metadata completeness (QA, not public) | Hidden. Open `dashboard.html?qa=1`, scroll to the bottom, click Show metadata completeness | Per field: Recorded, Not provided or not applicable, Blank. Multivalued fields are approximate. Anyone who knows the address can open it; it is hidden, not protected. |
+| Data quality checks (for data stewards) | Hidden. Interactive Dashboard footer: Show data quality checks (or open `dashboard.html?qa=1`) | Five checks: metadata completeness (required fields marked), latest sample per data source (orange = none in 12 months), values written more than one way, sites without usable coordinates, and viral measurement values that are not plotted (from the nightly build). Report problems to the data portal team; fix them at the source, not here. Hidden, not protected: anyone can open it. |
 | Viral loads | Province, City, Site, Organism, Gene Target, Measurement Unit; From and To dates; 3m, 6m, 12m, All; switches: line, full-series LOESS, PMMoV normalisation, log scale | RT-PCR only. Dots are the mean per date with error bars (SEM); the dashed line is a smoothed trend. Default: Alberta, Influenza A virus, last 12 months. "All" combines data without correcting for differences between labs. PMMoV normalisation awaits scientific sign-off and currently has data only for Ontario. |
 
 ## 5. Maintain
@@ -118,7 +118,8 @@ In `public/js/config.js`. Then preview (section 2), `npm test`, publish (section
 | Active-site window | `ACTIVE_DAYS = 365;` becomes `180` |
 | Colours | Edit hex codes in `PALETTE` (max 8, check colour-blind separation) |
 | Named segments | `EXPLORER_TOP_N = 7;` becomes `5` (max 7) |
-| Completeness field | Add `host_age: 'Host age',` to `COMPLETENESS_FIELDS` |
+| Completeness field | Add `host_age: 'Host age',` to `COMPLETENESS_FIELDS` (and to `REQUIRED_FIELDS` if the specification requires it) |
+| Spelling check field | Add `geo_loc_name_county: 'County',` to `QA_NAME_FIELDS` |
 | Another "no value" term | Add `'Unknown',` to `NULL_TERMS` |
 
 ## 7. Troubleshooting
