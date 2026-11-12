@@ -1,7 +1,7 @@
 // Viral loads (RT-PCR): mean per date ± SEM, LOESS trend, optional PMMoV normalisation.
 // Data comes from the nightly build in public/data/viral/ (scripts/build-viral-loads.mjs).
 // Browser globals are only touched inside functions, so the pure helpers import fine in Node.
-import { SARS2, PMMOV, LOESS_SPAN } from './config.js';
+import { SARS2, PMMOV, LOESS_SPAN, LOESS_SPAN_MIN, LOESS_SPAN_MAX } from './config.js';
 import { meanSem, mergeStat } from './rules.js';
 import { embed, colorScale, panel, failed, dataTable, getParam, setParams } from './charts.js';
 
@@ -89,12 +89,18 @@ export function loess(x, y, span = LOESS_SPAN, degree = LOESS_DEGREE) {
   return x.map((_, i) => loessAt(x, y, i, span, degree));
 }
 
+// Span typed by the viewer -> a number within [LOESS_SPAN_MIN, LOESS_SPAN_MAX], or null (not a number: use the default).
+export function parseSpan(v) {
+  const n = v == null || String(v).trim() === '' ? NaN : Number(v);
+  return Number.isFinite(n) ? Math.min(LOESS_SPAN_MAX, Math.max(LOESS_SPAN_MIN, n)) : null;
+}
+
 // rows sorted by date -> rows with valueSmooth. fitRows (default: rows) is what the curve is fitted on.
 // Loads can't be negative, so the trend is clamped at 0 (a quadratic fit can undershoot after a steep drop).
-export function withTrend(rows, fitRows = rows) {
+export function withTrend(rows, fitRows = rows, span = LOESS_SPAN) {
   const xs = fitRows.map((r) => Date.parse(r.date));
   const x = xs.some((v) => !Number.isFinite(v)) ? fitRows.map((_, i) => i) : xs;
-  const fit = loess(x, fitRows.map((r) => r.value));
+  const fit = loess(x, fitRows.map((r) => r.value), span);
   const byDate = new Map(fitRows.map((r, i) => [r.date, Number.isFinite(fit[i]) ? fit[i] : r.value]));
   return rows.map((r) => ({ ...r, valueSmooth: Math.max(0, byDate.get(r.date) ?? r.value), lineType: TREND }));
 }
@@ -167,7 +173,8 @@ export function pickOrganism(options, want) {
 // Resolve wanted selections against index.json -> valid selections, dropdown options and the file to load.
 // "All" is offered only when there is more than one option (as before).
 export function resolve(idx, want) {
-  const prov = idx.p.find((p) => p.n === want.province) ?? idx.p[0];
+  const provs = idx.p.filter((p) => p.n !== 'Not Applicable'); // not a place: left out of the menu
+  const prov = provs.find((p) => p.n === want.province) ?? provs[0];
   const one = (list, v) => (list.length === 1 ? list[0] : list.includes(v) ? v : ALL);
 
   const cityNames = prov.c.map((c) => c.n);
@@ -192,7 +199,7 @@ export function resolve(idx, want) {
   const file = siteNode ? `site/${siteNode.id}` : cityNode ? `city/${cityNode.id}` : `province/${prov.id}`;
   return {
     sel: { province: prov.n, city, site: siteNode ? siteNode.id : ALL, siteName: siteNode?.n ?? null, organism, gene, unit },
-    opts: { province: idx.p.map((p) => p.n), city: cityNames, site: siteOpts, organism: organisms, gene: genes, unit: units },
+    opts: { province: provs.map((p) => p.n), city: cityNames, site: siteOpts, organism: organisms, gene: genes, unit: units },
     file,
     single: !!siteNode,
   };
@@ -303,7 +310,6 @@ function markup() {
     <p class="explore-subtitle">Proof of concept demonstration purposes only. Not for scientific interpretation.</p>
   </header>
   <div class="viral-load-content">
-    <p class="viral-notice" id="viral-notice" role="status" hidden></p>
     <div class="viral-load-filters">
       <div class="viral-filter-row">${SELECTS.slice(0, 3).map(select).join('')}</div>
       <div class="viral-filter-row">${SELECTS.slice(3).map(select).join('')}</div>
@@ -325,12 +331,16 @@ function markup() {
         ${toggle('viral-loess-full-series', 'Full-series LOESS', true)}
         ${toggle('viral-norm', 'Normalise to PMMoV', false)}
         ${toggle('viral-log', 'Log scale', false)}
+        <label class="viral-span-field"><span>LOESS span</span>
+          <input type="number" id="viral-span" class="viral-date-cal-input viral-span-input"
+            min="${LOESS_SPAN_MIN}" max="${LOESS_SPAN_MAX}" step="0.05" value="${LOESS_SPAN}" /></label>
       </div>
     </div>
     <p class="explore-subtitle viral-load-smoothing-note">
-      The solid gray trend line is LOESS-smoothed (polynomial degree ${LOESS_DEGREE}, span ${LOESS_SPAN}).<br>By default it fits across all data matching your filters. Turn off Full-series LOESS to smooth only across the visible date window.
+      The solid gray trend line is LOESS-smoothed (polynomial degree ${LOESS_DEGREE}, span <span id="viral-span-shown">${LOESS_SPAN}</span>).<br>By default it fits across all data matching your filters. Turn off Full-series LOESS to smooth only across the visible date window.
     </p>
     <p id="viral-all-filter-warning" class="viral-all-filter-warning explore-subtitle" hidden aria-live="polite"></p>
+    <p class="viral-notice" id="viral-notice" role="status" hidden></p>
     <div id="viral-load-chart" class="viral-load-chart"></div>
     <div id="viral-table"></div>
   </div>`;
@@ -359,7 +369,7 @@ export function initViral(rootEl) {
   let seq = 0;
   let shownDates = []; // dates of the series on screen (for the presets)
   // Wanted selections (resolved against the index on every update) and options.
-  const st = { province: null, city: null, site: null, organism: null, gene: null, unit: null, from: null, to: null, norm: false, log: false };
+  const st = { province: null, city: null, site: null, organism: null, gene: null, unit: null, from: null, to: null, norm: false, log: false, span: null };
 
   const getFile = (p) => {
     if (!files.has(p)) {
@@ -418,7 +428,10 @@ export function initViral(rootEl) {
     syncDates(dates, from, to);
 
     const visible = series.filter((d) => d.date >= from && d.date <= to);
-    const rows = $('viral-loess-full-series').checked ? withTrend(visible, series) : withTrend(visible);
+    const span = st.span ?? LOESS_SPAN;
+    $('viral-span').value = span;
+    $('viral-span-shown').textContent = span;
+    const rows = withTrend(visible, $('viral-loess-full-series').checked ? series : visible, span);
     const unitLabel = label(unit);
     const spec = viralSpec(rows, {
       unit: unitLabel,
@@ -458,6 +471,7 @@ export function initViral(rootEl) {
       to: custom ? to : null,
       norm: norm ? '1' : null,
       log: st.log ? '1' : null,
+      span: st.span == null || st.span === LOESS_SPAN ? null : st.span,
     });
   }
 
@@ -499,12 +513,15 @@ export function initViral(rootEl) {
     $('viral-loess-full-series').addEventListener('change', update);
     $('viral-norm').addEventListener('change', (e) => { st.norm = e.target.checked; update(); });
     $('viral-log').addEventListener('change', (e) => { st.log = e.target.checked; update(); });
+    // 'change' fires on Enter or leaving the box, not on every keystroke. Not a number: back to the current span.
+    $('viral-span').addEventListener('change', (e) => { st.span = parseSpan(e.target.value) ?? st.span; update(); });
   }
 
   function setup(loaded) {
     for (const k of ['province', 'city', 'site', 'organism', 'gene', 'unit', 'from', 'to']) st[k] = getParam(k);
     st.norm = getParam('norm') === '1';
     st.log = getParam('log') === '1';
+    st.span = parseSpan(getParam('span'));
     // ?site=<name> alone (links from the map): find its province and city.
     const wantSite = st.site;
     if (wantSite && !st.province && loaded.lookup[wantSite]) [st.province, st.city] = loaded.lookup[wantSite];

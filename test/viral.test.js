@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  loess, withTrend, siteSeries, statSeries, hasRatio, rangeStart, pickOrganism, resolve, viralSpec, label,
+  loess, withTrend, parseSpan, siteSeries, statSeries, hasRatio, rangeStart, pickOrganism, resolve, viralSpec, label,
 } from '../public/js/viral.js';
 import { parseRecord, makeQa, makeStore, addRecord, buildOutput, uniqueId, round } from '../scripts/build-viral-loads.mjs';
 import { meanSem } from '../public/js/rules.js';
@@ -310,6 +310,10 @@ test('buildOutput: tree, lookup, unique ids, rollups equal site values', () => {
   assert.equal(all.sel.gene, 'N1'); // only one gene: no "All"
   // Same site name in two cities is labelled with its city when listed together.
   assert.ok(all.opts.site.some((o) => o.text === 'Site A (Other)'));
+  // "Not Applicable" is never offered as a province, even when it sorts first.
+  const na = resolve({ ...index, p: [{ ...on, n: 'Not Applicable' }, ...index.p] }, { province: 'Not Applicable' });
+  assert.ok(!na.opts.province.includes('Not Applicable'));
+  assert.equal(na.sel.province, 'Ontario');
 });
 
 test('viralSpec: empty, linear and symlog', () => {
@@ -329,4 +333,21 @@ test('toCsv quotes commas and quotes, and defuses formula-like text', () => {
   const cols = [{ key: 'a', label: 'Name' }, { key: 'n', label: 'Samples' }];
   const csv = toCsv(cols, [{ a: 'Lab A, "North"', n: 5 }, { a: '=SUM(1)', n: -2 }, { a: '-0.5', n: null }]);
   assert.equal(csv, 'Name,Samples\r\n"Lab A, ""North""",5\r\n\'=SUM(1),-2\r\n-0.5,');
+});
+
+test('parseSpan clamps to the allowed range and rejects non-numbers', () => {
+  assert.equal(parseSpan('0.5'), 0.5);
+  assert.equal(parseSpan('3'), 1);
+  assert.equal(parseSpan('0'), 0.05);
+  assert.equal(parseSpan(''), null);
+  assert.equal(parseSpan(null), null);
+  assert.equal(parseSpan('abc'), null);
+});
+
+test('withTrend uses the given span', () => {
+  const rows = Array.from({ length: 30 }, (_, i) => ({ date: `2024-01-${String(i + 1).padStart(2, '0')}`, value: (i % 5) * 2 + i / 3 }));
+  const narrow = withTrend(rows, rows, 0.1).map((r) => r.valueSmooth);
+  const wide = withTrend(rows, rows, 1).map((r) => r.valueSmooth);
+  assert.deepEqual(withTrend(rows).map((r) => r.valueSmooth), withTrend(rows, rows, 0.2).map((r) => r.valueSmooth));
+  assert.notDeepEqual(narrow, wide);
 });

@@ -125,6 +125,7 @@ export function dataTable(el, columns, rows, { open = false, title = 'Show data 
     const today = new Date().toISOString().slice(0, 10);
     download(`imicroseq-${file || el.id || 'data'}-${today}.csv`, toCsv(columns, rows));
   };
+  btn.hidden = true;
   sum.append(btn);
   const wrap = document.createElement('div');
   wrap.className = 'data-table-wrap';
@@ -138,6 +139,7 @@ export function dataTable(el, columns, rows, { open = false, title = 'Show data 
   const body = table.createTBody();
   // Render rows only when opened: some tables are large.
   det.addEventListener('toggle', () => {
+    btn.hidden = !det.open;
     if (!det.open || body.rows.length) return;
     rows.forEach((r) => {
       const tr = body.insertRow();

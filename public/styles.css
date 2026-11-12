@@ -413,9 +413,9 @@ body {
   padding: 0.5rem 0.9rem;
   max-width: 52rem;
   font-size: 0.9rem;
-  color: #1a2f4a;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
   border-radius: 8px;
   text-align: center;
 }
@@ -595,6 +595,16 @@ body {
 }
 .viral-toggle-label {
   flex: 0 0 auto;
+}
+.viral-span-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+.viral-span-input {
+  width: 5.5rem;
 }
 
 @media (max-width: 640px) {

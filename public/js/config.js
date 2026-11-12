@@ -92,7 +92,9 @@ export const VIRAL_ASSAY = 'Reverse transcription polymerase chain reaction assa
 export const SARS2 = 'Severe acute respiratory syndrome coronavirus 2';
 export const SARS2_MAX = 2000; // SARS-CoV-2 values above this are dropped before averaging
 export const PMMOV = 'Pepper mild mottle virus';
-export const LOESS_SPAN = 0.2;
+export const LOESS_SPAN = 0.2; // default; viewers can change it on the page within the range below
+export const LOESS_SPAN_MIN = 0.05;
+export const LOESS_SPAN_MAX = 1;
 
 // Chart colours, in order of use. Checked for colour-blind separation; if you
 // change them, keep at most 8 and re-check (see docs/ARCHITECTURE.md, "Charts").
@@ -102,6 +104,8 @@ export const OTHER_COLOR = '#B8BEC9';
 // Map markers: active sites in brand blue, historical in a lighter shade of it.
 export const ACTIVE_COLOR = '#4A63E7';
 export const HISTORICAL_COLOR = '#A9B7F4';
+// Map: sites with fewer samples than this get no "see viral loads" link or click-through.
+export const MAP_VIRAL_MIN_SAMPLES = 10;
 
 // Link behind "How to use this dashboard" in the footer.
 export const HELP_URL = 'https://github.com/bfjia/iMicroSeq_Dashboard/blob/main/docs/SOP.md#4-using-the-dashboard';
