@@ -106,6 +106,8 @@ export const ACTIVE_COLOR = '#4A63E7';
 export const HISTORICAL_COLOR = '#A9B7F4';
 // Map: sites with fewer samples than this get no "see viral loads" link or click-through.
 export const MAP_VIRAL_MIN_SAMPLES = 10;
+// Map: every site also links to its records in the portal explorer (?filters=<SQON>).
+export const PORTAL_EXPLORER_URL = 'https://imicroseq-dataportal.ca/explorer/environmental';
 
 // Link behind "How to use this dashboard" in the footer.
 export const HELP_URL = 'https://github.com/bfjia/iMicroSeq_Dashboard/blob/main/docs/SOP.md#4-using-the-dashboard';

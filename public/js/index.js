@@ -41,6 +41,7 @@ function loadIndex() {
       .map((b) => {
         const rec = b.top_hits?.data || {};
         return {
+          key: b.key, // stored value, for the portal explorer filter
           name: trimBrackets(b.key),
           count: b.doc_count,
           active: active.has(b.key),
