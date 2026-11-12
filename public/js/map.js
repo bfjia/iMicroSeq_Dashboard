@@ -1,6 +1,7 @@
 // Coverage map: Leaflet (loaded only when needed), Canada outline, one marker per location.
-import { ACTIVE_COLOR, HISTORICAL_COLOR, ACTIVE_DAYS, MAP_VIRAL_MIN_SAMPLES } from './config.js';
+import { ACTIVE_COLOR, HISTORICAL_COLOR, ACTIVE_DAYS, MAP_VIRAL_MIN_SAMPLES, PORTAL_EXPLORER_URL } from './config.js';
 import { fmt } from './charts.js';
+import { and, isIn } from './api.js';
 
 const LEAFLET = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet';
 
@@ -85,28 +86,23 @@ export async function drawMap(el, sites) {
       weight: 1.5,
     }).addTo(map);
     const line = (s) => `<strong>${escapeHtml(s.name)}</strong><br>${fmt(s.count)} samples · ${s.active ? 'Active' : 'Historical'}`;
-    const link = (s) => `dashboard.html?site=${encodeURIComponent(s.name)}#viral`;
-    const linked = p.sites.filter((s) => s.count >= MAP_VIRAL_MIN_SAMPLES);
-    if (p.sites.length === 1) {
-      const s = p.sites[0];
-      const hint = linked.length ? '<br><span class="coverage-tooltip-hint">Click to see viral loads for this site</span>' : '';
-      marker.bindTooltip(line(s) + hint, { direction: 'top', className: 'coverage-tooltip' });
-      if (linked.length) marker.on('click', () => { location.href = link(s); });
-      continue;
-    }
-    // Several sites: hover lists them all (the list scrolls), click opens a list with a viral loads link per site.
-    const scrolls = p.sites.length > 4 ? ' · scroll for more' : '';
+    const viral = (s) => `dashboard.html?site=${encodeURIComponent(s.name)}#viral`;
+    const portal = (s) => `${PORTAL_EXPLORER_URL}?filters=${encodeURIComponent(JSON.stringify(and(isIn('geo_loc_name_site', [s.key]))))}`;
+    const links = (s) => (s.count >= MAP_VIRAL_MIN_SAMPLES ? `<br><a href="${viral(s)}">See viral loads for this site</a>` : '') +
+      `<br><a href="${portal(s)}" target="_blank" rel="noopener">Browse this site's data on the portal ↗</a>`;
+    const many = p.sites.length > 1;
+    const head = `<span class="coverage-tooltip-hint">${p.sites.length} sites here · ${fmt(p.count)} samples`;
+    const hint = `<span class="coverage-tooltip-hint">Click for links to ${many ? 'these sites' : 'this site'}</span>`;
+    // Hover: details (several sites: all listed, the list scrolls). Click: a popup with the links per site.
     marker.bindTooltip(
-      `<span class="coverage-tooltip-hint">${p.sites.length} sites here · ${fmt(p.count)} samples${scrolls}</span>` +
-        `<div class="coverage-list">${p.sites.map((s) => `<div class="coverage-site">${line(s)}</div>`).join('')}</div>` +
-        (linked.length ? '<span class="coverage-tooltip-hint">Click to see viral loads for these sites</span>' : ''),
+      many
+        ? `${head}${p.sites.length > 4 ? ' · scroll for more' : ''}</span>` +
+            `<div class="coverage-list">${p.sites.map((s) => `<div class="coverage-site">${line(s)}</div>`).join('')}</div>${hint}`
+        : `${line(p.sites[0])}<br>${hint}`,
       { direction: 'top', className: 'coverage-tooltip' },
     );
-    if (!linked.length) continue;
     marker.bindPopup(
-      `<span class="coverage-tooltip-hint">${p.sites.length} sites here · ${fmt(p.count)} samples</span>` +
-        p.sites.map((s) => `<div class="coverage-site">${line(s)}` +
-          (s.count >= MAP_VIRAL_MIN_SAMPLES ? `<br><a href="${link(s)}">See viral loads for this site</a>` : '') + '</div>').join(''),
+      (many ? `${head}</span>` : '') + p.sites.map((s) => `<div class="coverage-site">${line(s)}${links(s)}</div>`).join(''),
       { className: 'coverage-popup', maxHeight: 300 },
     );
     marker.on('popupopen', () => marker.closeTooltip());

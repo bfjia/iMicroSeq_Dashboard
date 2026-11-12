@@ -85,7 +85,7 @@ Proof of concept for demonstration only. Not for scientific interpretation. Chec
 | Panel | Shows and controls | Notes |
 |---|---|---|
 | Hero cards (At a Glance) | Samples, sites, active sites (last 12 months), organisms, data sources, latest sample | "Not Provided", "Not Applicable" and blank are not counted. |
-| Sample Coverage | One circle per location (sites at the same spot share one), size = samples, blue = active, light blue = historical. Hover for details, click to open viral loads (sites with 10+ samples) | Sites without GPS sit at their province capital. Samples with no site are not shown. Click the map once to enable scroll zoom. |
+| Sample Coverage | One circle per location (sites at the same spot share one), size = samples, blue = active, light blue = historical. Hover for details, click for links: viral loads (sites with 10+ samples) and the site's records on the data portal | Sites without GPS sit at their province capital. Samples with no site are not shown. Click the map once to enable scroll zoom. |
 | Environmental Sites | One bar split by site type, share in the legend | Top 8 plus "Other". |
 | Samples Captured Over Time | Total samples to date (Cumulative, the default) or samples per month by organism (Monthly) | Monthly: up to 7 organisms coloured, rest "Other" (gray). |
 | Sample breakdown | X axis and Segment By dropdowns, swap button, Count or Percent | Max 7 segments plus "Other". |
