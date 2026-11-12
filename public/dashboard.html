@@ -28,7 +28,7 @@
     <main class="page">
       <header class="page-title">
         <h1 class="page-title-text">Interactive Dashboard</h1>
-        <p class="page-title-subtext">The Canadian iMicroSeq Data Portal, explored live.</p>
+        <p class="page-title-subtext">Explore the data within the Canadian iMicroSeq Data Portal.</p>
         <p class="page-title-subtext">Best viewed in landscape mode.</p>
       </header>
 
@@ -65,18 +65,6 @@
         <div id="viral-root"></div>
       </section>
       <!-- viral:end -->
-
-      <!-- Data quality checks: hidden until opened from the footer or with ?qa=1 (public/js/qa.js) -->
-      <section class="explore-panel" id="qa" hidden>
-        <header class="explore-header">
-          <div class="explore-kicker">
-            <span class="explore-badge">Data Quality</span>
-            <h2 class="explore-kicker-text">Data quality checks</h2>
-          </div>
-          <p class="explore-subtitle">For data stewards: problems in the portal data worth fixing at the source. Live, except viral measurement values (nightly).</p>
-        </header>
-        <div id="qa-root"></div>
-      </section>
     </main>
 
     <footer class="site-footer">
@@ -85,7 +73,7 @@
         Data is fetched live for all except for the viral load graph, however it is cached by up to 1 hour<span id="footer-fetched"></span>.
         Viral loads data refreshed nightly, current data is from <span id="footer-viral-asof"><span class="spinner spinner-small" role="status" aria-label="Loading"></span></span>.
       </p>
-      <p><a id="footer-help" href="#">How to use this dashboard</a> · <button type="button" id="footer-qa" class="link-btn">Show data quality checks</button></p>
+      <p><a id="footer-help" href="#">How to use this dashboard</a> · <a href="qa.html">Show data quality checks</a></p>
     </footer>
   </body>
 </html>

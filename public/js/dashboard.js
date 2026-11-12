@@ -1,5 +1,5 @@
-// Interactive Dashboard page: sample explorer (live), viral loads (nightly files, js/viral.js),
-// and data quality checks (js/qa.js, opened from the footer or with ?qa=1).
+// Interactive Dashboard page: sample explorer (live) and viral loads (nightly files, js/viral.js).
+// Data quality checks are their own page (qa.html, js/qa.js), linked from the footer.
 import { gql, aliased, isIn, dateRange, years, months } from './api.js';
 import { trimBrackets, monthKey } from './rules.js';
 import {
@@ -218,27 +218,10 @@ function explorer() {
   draw();
 }
 
-// ─── Data quality checks (public/js/qa.js, loaded only when opened) ──────────
-
-function qa(open) {
-  const section = document.getElementById('qa');
-  const btn = document.getElementById('footer-qa');
-  section.hidden = !open;
-  btn.textContent = open ? 'Hide data quality checks' : 'Show data quality checks';
-  setParams({ qa: open ? '1' : null });
-  if (open) import('./qa.js').then((m) => m.initQA(document.getElementById('qa-root')));
-  return section;
-}
-
 // ─── Start ───────────────────────────────────────────────────────────────────
 
+if (getParam('qa') === '1') location.replace('qa.html'); // old links: checks used to live on this page
 explorer();
-document.getElementById('footer-qa').onclick = () => {
-  const open = document.getElementById('qa').hidden;
-  const section = qa(open);
-  if (open) section.scrollIntoView({ behavior: 'smooth' });
-};
-if (getParam('qa') === '1') qa(true);
 const viral = document.getElementById('viral');
 const startViral = () => initViral(document.getElementById('viral-root'));
 // Deep link from the map (?site=…#viral): load straight away instead of waiting for scroll.

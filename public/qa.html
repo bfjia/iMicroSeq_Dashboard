@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Data Quality Checks – iMicroSeq</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/vega@6.2.0/build/vega.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@6.4.2/build/vega-lite.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@7.1.0/build/vega-embed.min.js"></script>
+    <script type="module" src="js/qa.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-logo-area">
+        <div class="header-logo-panel">
+          <a href="https://imicroseq-dataportal.ca/"><img src="img/imicroseq-logo.png" alt="iMicroSeq Data Portal" class="header-logo-img" /></a>
+        </div>
+      </div>
+      <nav class="header-nav" aria-label="Main">
+        <span class="header-poc-notice">This dashboard is for proof-of-concept demonstration purposes only.</span>
+        <a href="./" class="header-link">At a Glance</a>
+        <a href="dashboard.html" class="header-link">Interactive Dashboard</a>
+        <a href="https://portal-ui.imicroseq-dataportal.ca/explorer/environmental" class="header-link">Data Portal ↗</a>
+      </nav>
+    </header>
+
+    <main class="page">
+      <header class="page-title">
+        <h1 class="page-title-text">Data Quality Checks</h1>
+        <p class="page-title-subtext">Explore the data within the Canadian iMicroSeq Data Portal.</p>
+      </header>
+
+      <!-- Data quality checks (public/js/qa.js) -->
+      <section class="explore-panel" id="qa">
+        <header class="explore-header">
+          <div class="explore-kicker">
+            <span class="explore-badge">Data Quality</span>
+            <h2 class="explore-kicker-text">Data quality checks</h2>
+          </div>
+          <p class="explore-subtitle">For data stewards: problems in the portal data worth fixing at the source. Live, except viral measurement values (nightly).</p>
+        </header>
+        <div id="qa-root"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>Data: <a href="https://imicroseq-dataportal.ca/">Canadian iMicroSeq Data Portal</a>.</p>
+      <p>
+        Data is fetched live for all except for the viral load graph, however it is cached by up to 1 hour<span id="footer-fetched"></span>.
+        Viral loads data refreshed nightly, current data is from <span id="footer-viral-asof"><span class="spinner spinner-small" role="status" aria-label="Loading"></span></span>.
+      </p>
+      <p><a id="footer-help" href="#">How to use this dashboard</a></p>
+    </footer>
+  </body>
+</html>

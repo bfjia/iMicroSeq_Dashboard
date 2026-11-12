@@ -1,10 +1,9 @@
-// Data quality checks for data stewards (Interactive Dashboard, not in the public view).
-// Loaded only when opened: footer button or ?qa=1. All live except "Viral measurement values",
-// which comes from the nightly build (data/viral/meta.json).
+// Data quality checks page (qa.html) for data stewards, linked from the Interactive Dashboard footer.
+// All live except "Viral measurement values", which comes from the nightly build (data/viral/meta.json).
 import { gql, aliased, isIn } from './api.js';
 import { trimBrackets, isNull, parseCoord } from './rules.js';
 import { COMPLETENESS_FIELDS, REQUIRED_FIELDS, QA_NAME_FIELDS, DATE_FIELD, ACTIVE_DAYS, PALETTE, OTHER_COLOR, SARS2_MAX } from './config.js';
-import { embed, panel, dataTable, viralMeta, fmt } from './charts.js';
+import { embed, panel, dataTable, viralMeta, fmt, setFooter } from './charts.js';
 
 const DAY = 86400000;
 const TODAY = Math.floor(Date.now() / DAY) * DAY;
@@ -251,14 +250,13 @@ const CHECKS = [
   ['Viral measurement values', 'Why RT-PCR measurements are or are not plotted. From the nightly build.', measurements],
 ];
 
-export function initQA(root) {
-  if (root.childElementCount) return; // already built
-  for (const [title, sub, run] of CHECKS) {
-    const block = document.createElement('div');
-    block.className = 'qa-block';
-    block.innerHTML = `<h3>${title}</h3><p class="qa-sub">${sub}</p><div class="qa-chart"></div><div class="qa-table"></div>`;
-    root.append(block);
-    const chart = block.querySelector('.qa-chart');
-    panel(chart, () => run(chart, block.querySelector('.qa-table')));
-  }
+const root = document.getElementById('qa-root');
+for (const [title, sub, run] of CHECKS) {
+  const block = document.createElement('div');
+  block.className = 'qa-block';
+  block.innerHTML = `<h3>${title}</h3><p class="qa-sub">${sub}</p><div class="qa-chart"></div><div class="qa-table"></div>`;
+  root.append(block);
+  const chart = block.querySelector('.qa-chart');
+  panel(chart, () => run(chart, block.querySelector('.qa-table')));
 }
+setFooter();

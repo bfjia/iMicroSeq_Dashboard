@@ -34,7 +34,7 @@ Going to production is a pull request from this repo into the production repo, n
 | Monthly by organism | `monthlyByOrganism()` | 1 more, when the Monthly button is pressed | One aliased aggregation block per calendar month (~175 blocks, ~0.5-0.8 s). Largest 7 organisms keep a colour, the rest are "Other". |
 | Map | `public/js/map.js` | 0 extra (reuses the index query), plus map tiles | One marker per location: sites at the same coordinates share a marker sized by their total samples, whose tooltip lists each site. Sites with no usable GPS (175 of 670 when measured: "Not Provided", "Restricted Access" or blank in the sampled record) sit at the province capital from `public/data/ProvinceCapitalCoords.csv`. Samples with no site (~19,662) are not shown and not counted on the page. Click a single-site marker: `dashboard.html?site=<name>#viral`; a shared marker opens a list with that link per site. |
 | Explorer | `public/js/dashboard.js` | 1 "dimensions" request, then 1 per chart | Dimensions: buckets per field, date stats, daily histogram. Category x category: one aliased block per top-7 segment value plus one "Other" block. Time axis: one block per period. Values differing only by ontology suffix are merged. Totals match the dimension totals exactly. Segments are drawn at least 0.6% of the tallest bar (`MIN_SHARE`) so tiny ones still show their colour; tooltips and table show true counts. |
-| Data quality checks | `public/js/qa.js`, loaded only when opened (footer button or `?qa=1`) | 5 GraphQL requests + `public/data/viral/meta.json` | Completeness: buckets with `include_missing` per field in `COMPLETENESS_FIELDS`, `REQUIRED_FIELDS` marked; numeric and date fields use `stats.count`; multivalued fields clamped so each sample counts once (approximate). Latest sample per organisation: one aliased block per organisation with date `stats.max`. Spelling: values in `QA_NAME_FIELDS` equal after `trimBrackets`, lower case and collapsed spaces, plus values with ";" outside brackets. Coordinates: site buckets with `top_hits`, `parseCoord` per site. Viral measurements: counts the nightly build writes to `public/data/viral/meta.json` (plotted, not provided, text, over the SARS-CoV-2 cap, no date, top text values and units). |
+| Data quality checks | `public/qa.html`, `public/js/qa.js`; linked from the Interactive Dashboard footer (old `dashboard.html?qa=1` links redirect) | 5 GraphQL requests + `public/data/viral/meta.json` | Completeness: buckets with `include_missing` per field in `COMPLETENESS_FIELDS`, `REQUIRED_FIELDS` marked; numeric and date fields use `stats.count`; multivalued fields clamped so each sample counts once (approximate). Latest sample per organisation: one aliased block per organisation with date `stats.max`. Spelling: values in `QA_NAME_FIELDS` equal after `trimBrackets`, lower case and collapsed spaces, plus values with ";" outside brackets. Coordinates: site buckets with `top_hits`, `parseCoord` per site. Viral measurements: counts the nightly build writes to `public/data/viral/meta.json` (plotted, not provided, text, over the SARS-CoV-2 cap, no date, top text values and units). |
 | Viral loads | `public/js/viral.js` | `public/data/viral/index.json` (no-cache) + 1 data file per selection (`?v=<generatedAt>`) | Static files from `public/data/viral/`, built nightly. Default view: Alberta / All / All / Influenza A virus / all genes / C/ml, last 12 months. |
 
 Each panel loads when it scrolls near the viewport (`whenVisible`). Identical queries in one page view are memoised (`public/js/api.js`).
@@ -66,7 +66,7 @@ Build output (`public/data/viral/`, gitignored): 420 files in the last full buil
 
 | File | Content |
 |---|---|
-| `public/data/viral/meta.json` | `{generatedAt, records, qa}`. The footer on both pages reads the date; the data quality checks read `qa`. |
+| `public/data/viral/meta.json` | `{generatedAt, records, qa}`. The footer on every page reads the date; the data quality checks read `qa`. |
 | `public/data/viral/index.json` | `{generatedAt, records, p:[{n,id,t,c:[{n,id,t,s:[{n,id,t}]}]}], lookup}`. `p` is province > city > site; `t` = `{organism:{gene:[units]}}`; `lookup` maps site name to `[province, city]`. |
 | `public/data/viral/site/<id>.json` | `{organism:{gene:{unit:{d:[dates], v:[[values]], r?:[[ratios]]}}}}` |
 | `public/data/viral/city/<id>.json`, `public/data/viral/province/<id>.json` | Same shape, but `v[i]` and `r[i]` are `[n, sum, sumsq]` (`r[i]` is 0 when none) so groups combine exactly |
@@ -102,8 +102,8 @@ Known data caveats: catchment population is empty (0% recorded, so per-capita ra
 | Path | Purpose |
 |---|---|
 | `public/index.html`, `public/js/index.js`, `public/js/map.js` | At a Glance page |
-| `public/dashboard.html`, `public/js/dashboard.js` | Explorer, viral loads container, QA toggle |
-| `public/js/qa.js` | Data quality checks |
+| `public/dashboard.html`, `public/js/dashboard.js` | Explorer, viral loads container |
+| `public/qa.html`, `public/js/qa.js` | Data quality checks page |
 | `public/js/viral.js` | Viral loads panel (styles are in `public/styles.css`) |
 | `public/js/config.js` | Every setting a maintainer changes |
 | `public/js/api.js` | GraphQL client, SQON helpers, aliased queries |

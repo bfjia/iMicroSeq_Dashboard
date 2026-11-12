@@ -875,17 +875,6 @@ a {
   margin-top: 0.5rem;
 }
 
-/* A button that looks like a footer link */
-.link-btn {
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: #4a63e7;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
 .sample-chart {
   height: auto;
   min-height: 520px;
