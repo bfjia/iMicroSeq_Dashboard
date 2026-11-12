@@ -1,6 +1,6 @@
 # iMicroSeq Dashboard
 
-Proof-of-concept dashboard for the [Canadian iMicroSeq Data Portal](https://imicroseq-dataportal.ca/): summary numbers, sampling activity, a site map, a sample explorer, metadata completeness and wastewater viral-load trends.
+Proof-of-concept dashboard for the [Canadian iMicroSeq Data Portal](https://imicroseq-dataportal.ca/): summary numbers, sampling activity, a site map, a sample explorer, wastewater viral-load trends, and a metadata completeness check for data stewards.
 
 - **Staging:** [imicroseq-dashboard.bfjia.net](https://imicroseq-dashboard.bfjia.net) (this repo)
 - **Production:** [dashboard.imicroseq-dataportal.ca](https://dashboard.imicroseq-dataportal.ca) (production repo, after cutover)

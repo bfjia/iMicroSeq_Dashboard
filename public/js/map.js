@@ -68,7 +68,7 @@ export async function drawMap(el, sites) {
     const marker = L.circleMarker([lat, lon], {
       radius: 4 + 12 * Math.sqrt(s.count / max),
       fillColor: s.active ? ACTIVE_COLOR : HISTORICAL_COLOR,
-      fillOpacity: s.active ? 0.85 : 0.6,
+      fillOpacity: s.active ? 0.85 : 0.75,
       color: '#ffffff', // surface ring so overlapping markers stay distinct
       weight: 1.5,
     }).addTo(map);

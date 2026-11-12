@@ -79,5 +79,6 @@ export const OTHER_COLOR = '#B8BEC9';
 
 // Link behind "How to use this dashboard" in the footer.
 export const HELP_URL = 'https://github.com/bfjia/iMicroSeq_Dashboard/blob/main/docs/SOP.md#4-using-the-dashboard';
+// Map markers: active sites in brand blue, historical in a lighter shade of it.
 export const ACTIVE_COLOR = '#4A63E7';
-export const HISTORICAL_COLOR = '#9AA3B2';
+export const HISTORICAL_COLOR = '#A9B7F4';

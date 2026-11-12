@@ -271,12 +271,12 @@ body {
   width: 100%;
 }
 
-/* Two-column grid for growth + breakdown panels */
+/* Two-column grid: samples over time + environmental sites */
 .panel-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.5rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
 }
 
 /* --- Explore section: kicker, subtitle, axis selects, chart, CTAs --- */
@@ -887,9 +887,9 @@ a {
   min-height: 340px;
 }
 
-.chart-breakdown {
-  width: 100%;
-  min-height: 200px;
+/* The hidden attribute always wins over display rules */
+[hidden] {
+  display: none !important;
 }
 
 .completeness-chart {
