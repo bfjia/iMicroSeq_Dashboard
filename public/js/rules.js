@@ -13,7 +13,7 @@ export function isNull(v) {
 }
 
 // Multivalued fields come back as arrays: take the first element.
-export function firstVal(v) {
+function firstVal(v) {
   return Array.isArray(v) ? (v.length ? v[0] : '') : v;
 }
 

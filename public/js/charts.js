@@ -3,10 +3,10 @@
 import { PALETTE, OTHER_COLOR, HELP_URL } from './config.js';
 import { fetchedAt } from './api.js';
 
-export const SCHEMA = 'https://vega.github.io/schema/vega-lite/v6.json';
+const SCHEMA = 'https://vega.github.io/schema/vega-lite/v6.json';
 
 // Common look: recessive hairline grid, no axis domain lines, text in ink not series colour.
-export const VEGA_CONFIG = {
+const VEGA_CONFIG = {
   font: 'system-ui, -apple-system, "Segoe UI", sans-serif',
   background: null,
   view: { stroke: null },
@@ -31,16 +31,10 @@ export function embed(el, spec) {
 }
 
 export const fmt = (n) => (n == null || !Number.isFinite(n) ? '–' : Number(n).toLocaleString('en-CA'));
-export function compact(n) {
-  if (n == null || !Number.isFinite(n)) return '–';
-  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
-  if (n >= 1e4) return `${(n / 1e3).toFixed(1)}K`;
-  return fmt(n);
-}
 
 // ─── Panel states ────────────────────────────────────────────────────────────
 
-export function loading(el) {
+function loading(el) {
   el.innerHTML = '<div class="skeleton" aria-busy="true"><span>Loading…</span></div>';
 }
 

@@ -6,9 +6,6 @@
 export const API_PROXY = '/api/graphql';
 export const API_DIRECT = 'https://arranger-environmental.imicroseq-dataportal.ca/graphql';
 
-export const PORTAL_URL = 'https://imicroseq-dataportal.ca/';
-export const PORTAL_EXPLORER_URL = 'https://portal-ui.imicroseq-dataportal.ca/explorer/environmental';
-
 // Date field used for every time axis.
 export const DATE_FIELD = 'sample_collection_start_date';
 
@@ -102,8 +99,9 @@ export const LOESS_SPAN = 0.2;
 export const PALETTE = ['#4A63E7', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'];
 export const OTHER_COLOR = '#B8BEC9';
 
-// Link behind "How to use this dashboard" in the footer.
-export const HELP_URL = 'https://github.com/bfjia/iMicroSeq_Dashboard/blob/main/docs/SOP.md#4-using-the-dashboard';
 // Map markers: active sites in brand blue, historical in a lighter shade of it.
 export const ACTIVE_COLOR = '#4A63E7';
 export const HISTORICAL_COLOR = '#A9B7F4';
+
+// Link behind "How to use this dashboard" in the footer.
+export const HELP_URL = 'https://github.com/bfjia/iMicroSeq_Dashboard/blob/main/docs/SOP.md#4-using-the-dashboard';

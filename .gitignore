@@ -139,8 +139,6 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 ProjectiMicroSeq.code-workspace
-data/data.json
-data/data.tsv
 
 data_specification
 query_examples
