@@ -86,7 +86,7 @@ Shared by the browser and the build in `public/js/rules.js`; constants in `publi
 | SARS-CoV-2 cap | Values above `SARS2_MAX` (2000) are dropped before averaging. The cap ignores units; kept from the old site. |
 | Plottable values | Numeric text only. |
 | Averages | Per-date mean and SEM. "All" views combine `[n, sum, sumsq]` exactly. |
-| LOESS | Tricube weights, degree 2, span `LOESS_SPAN` (0.2); same as the old site. R reference scripts in `scripts/smoothing/`. |
+| LOESS | Tricube weights, degree 2, span `LOESS_SPAN` (0.2); same as the old site and identical to R `loess(surface = "direct")`. Fitted values are clamped at 0 and drawn as a monotone curve (smooth, never overshoots). With few points (e.g. 52 weekly dates with Full-series off) each local fit uses ~10 neighbours, so the curve follows the data closely. R reference scripts in `scripts/smoothing/`. |
 | PMMoV normalisation | Target value divided by the mean of the same record's PMMoV values above 0 in the same unit. **Awaiting scientific sign-off.** |
 
 Known data caveats: catchment population is empty (0% recorded, so per-capita rates are not offered); viral lineage is filled for only ~44 records; measurement units are mixed.

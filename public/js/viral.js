@@ -90,12 +90,13 @@ export function loess(x, y, span = LOESS_SPAN, degree = LOESS_DEGREE) {
 }
 
 // rows sorted by date -> rows with valueSmooth. fitRows (default: rows) is what the curve is fitted on.
+// Loads can't be negative, so the trend is clamped at 0 (a quadratic fit can undershoot after a steep drop).
 export function withTrend(rows, fitRows = rows) {
   const xs = fitRows.map((r) => Date.parse(r.date));
   const x = xs.some((v) => !Number.isFinite(v)) ? fitRows.map((_, i) => i) : xs;
   const fit = loess(x, fitRows.map((r) => r.value));
   const byDate = new Map(fitRows.map((r, i) => [r.date, Number.isFinite(fit[i]) ? fit[i] : r.value]));
-  return rows.map((r) => ({ ...r, valueSmooth: byDate.get(r.date) ?? r.value, lineType: TREND }));
+  return rows.map((r) => ({ ...r, valueSmooth: Math.max(0, byDate.get(r.date) ?? r.value), lineType: TREND }));
 }
 
 // ─── Series from the build files ─────────────────────────────────────────────
@@ -253,7 +254,8 @@ export function viralSpec(rows, { unit, yTitle, showLine, log, single, norm, nar
         },
       },
       {
-        mark: { type: 'line', interpolate: 'linear', strokeWidth: 2.5, color: '#6b7280' },
+        // Monotone curve through the fitted values: smooth, and never overshoots them (so never below 0).
+        mark: { type: 'line', interpolate: 'monotone', strokeWidth: 2.5, color: '#6b7280' },
         encoding: {
           x,
           y: y('valueSmooth'),
