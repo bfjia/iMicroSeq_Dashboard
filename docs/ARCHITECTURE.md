@@ -62,7 +62,7 @@ Cloudflare Workers Builds, connected to the repo in the Cloudflare dashboard (se
 
 Failure behaviour: if any step fails (for example the build finds a different row count than the API reported), nothing deploys and the site keeps the previous data. The build also writes to a temporary folder and swaps it in only on success. Builds are stopped after 20 minutes, so a very slow portal API means a missed night, not a broken site.
 
-Build output (`public/data/viral/`, gitignored): 420 files in the last full build (315 site, 92 city, 12 province, 1 index), plus `meta.json` from now on, 9.4 MB raw, ~2.5 MB gzipped. Peak build memory ~217 MB. Values are rounded to 4 significant digits.
+Build output (`public/data/viral/`, gitignored): 420 files in the last full build (315 site, 92 city, 12 province, 1 index), plus `public/data/viral/meta.json` from now on, 9.4 MB raw, ~2.5 MB gzipped. Peak build memory ~217 MB. Values are rounded to 4 significant digits.
 
 | File | Content |
 |---|---|
