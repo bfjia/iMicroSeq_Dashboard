@@ -270,6 +270,7 @@ test('buildOutput: tree, lookup, unique ids, rollups equal site values', () => {
   assert.equal(meanSem(prov[SARS2].N1.u.v[0]).mean, 3);
   assert.ok(files.has(`city/${on.c[1].id}.json`));
   assert.ok(files.has('index.json'));
+  assert.deepEqual(files.get('meta.json'), { generatedAt: 'now', records: 5 });
 
   const r = resolve(index, { province: null, site: 'Site B' });
   assert.equal(r.sel.city, 'All');

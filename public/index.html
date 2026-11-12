@@ -69,29 +69,6 @@
       </section>
       <p class="hero-error" id="hero-error" hidden></p>
 
-      <section class="panel-grid">
-        <section class="panel" id="activity">
-          <header class="panel-header panel-header-split">
-            <h2>Samples Captured Over Time</h2>
-            <div class="segmented" role="group" aria-label="Show as">
-              <button type="button" id="activity-cumulative" aria-pressed="true">Cumulative</button>
-              <button type="button" id="activity-monthly" aria-pressed="false">Monthly</button>
-            </div>
-          </header>
-          <p class="panel-subtitle" id="activity-subtitle">Total samples collected up to each month</p>
-          <div id="activity-chart" class="chart-activity"></div>
-          <div id="activity-table"></div>
-        </section>
-
-        <section class="panel" id="breakdown">
-          <header class="panel-header">
-            <h2>Data Breakdown By Environmental Sites</h2>
-          </header>
-          <div id="breakdown-chart" class="chart-activity"></div>
-          <div id="breakdown-table"></div>
-        </section>
-      </section>
-
       <section class="panel panel-wide" id="coverage">
         <header class="panel-header">
           <h2>Sample Coverage</h2>
@@ -101,6 +78,27 @@
         <p class="panel-note" id="coverage-note"></p>
       </section>
 
+      <section class="panel panel-wide" id="activity">
+        <header class="panel-header panel-header-split">
+          <h2>Samples Captured Over Time</h2>
+          <div class="segmented" role="group" aria-label="Show as">
+            <button type="button" id="activity-cumulative" aria-pressed="true">Cumulative</button>
+            <button type="button" id="activity-monthly" aria-pressed="false">Monthly</button>
+          </div>
+        </header>
+        <p class="panel-subtitle" id="activity-subtitle">Total samples collected up to each month</p>
+        <div id="activity-chart" class="chart-activity"></div>
+        <div id="activity-table"></div>
+      </section>
+
+      <section class="panel panel-wide" id="breakdown">
+        <header class="panel-header">
+          <h2>Data Breakdown By Environmental Sites</h2>
+        </header>
+        <div id="breakdown-chart" class="chart-breakdown"></div>
+        <div id="breakdown-table"></div>
+      </section>
+
       <div class="explore-actions">
         <a class="explore-cta" href="https://portal-ui.imicroseq-dataportal.ca/explorer/environmental">Explore the iMicroSeq Data Portal</a>
         <a class="primary-cta" href="dashboard.html">Visualize on the Interactive Dashboard</a>
@@ -108,9 +106,10 @@
     </main>
 
     <footer class="site-footer">
+      <p>Data: <a href="https://imicroseq-dataportal.ca/">Canadian iMicroSeq Data Portal</a>.</p>
       <p>
-        Data: <a href="https://imicroseq-dataportal.ca/">Canadian iMicroSeq Data Portal</a>.
-        Live, cached up to 1 hour<span id="footer-fetched"></span>.
+        Data is fetched live for all except for the viral load graph, however it is cached by up to 1 hour<span id="footer-fetched"></span>.
+        Viral loads data refreshed nightly, current data is from <span id="footer-viral-asof">…</span>.
       </p>
       <p><a id="footer-help" href="#">How to use this dashboard</a></p>
     </footer>

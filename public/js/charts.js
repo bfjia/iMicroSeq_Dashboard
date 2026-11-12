@@ -138,12 +138,23 @@ export function setParams(obj) {
 
 // ─── Footer ──────────────────────────────────────────────────────────────────
 
+// Viral build date from the tiny meta.json written by the nightly build (fetched once per page).
+let viralMeta;
+function viralDate() {
+  viralMeta ??= fetch('data/viral/meta.json', { cache: 'no-cache' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((m) => (m ? new Date(m.generatedAt).toLocaleDateString('en-CA', { dateStyle: 'medium' }) : 'unavailable'))
+    .catch(() => 'unavailable');
+  return viralMeta;
+}
+
 export function setFooter() {
   const f = document.getElementById('footer-fetched');
   if (f && fetchedAt) {
-    const d = new Date(fetchedAt);
-    f.textContent = ` (fetched ${d.toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })})`;
+    f.textContent = ` (${new Date(fetchedAt).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })})`;
   }
+  const asof = document.getElementById('footer-viral-asof');
+  if (asof) viralDate().then((d) => { asof.textContent = d; });
   const help = document.getElementById('footer-help');
   if (help) help.href = HELP_URL;
 }

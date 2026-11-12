@@ -57,7 +57,7 @@ A build runs `npm run build` (tests, then about 10 minutes of viral data), then 
 5. **Set up the nightly rebuild.**
    1. The Worker, Settings, Build, Deploy Hooks, Create. Name `nightly`, branch `main`. Copy the URL and keep it in your password manager; anyone with it can start a build.
    2. Store it like the map key, with the name `DEPLOY_HOOK_URL`: `npx wrangler secret put DEPLOY_HOOK_URL --env=""`, or the website method in step 4.
-6. **Check the site.** Open `https://imicroseq-dashboard.bfjia.net` (the first time, the address can take a few minutes to start working). Hero numbers appear, the map shows streets, and the Interactive Dashboard footer shows "Viral loads as of <today>". The next morning the date should move on by itself.
+6. **Check the site.** Open `https://imicroseq-dashboard.bfjia.net` (the first time, the address can take a few minutes to start working). Hero numbers appear, the map shows streets, and the footer says "current data is from <today>". The next morning the date should move on by itself.
 7. **If you used GitHub Actions before:** delete the GitHub secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (repo, Settings, Secrets and variables, Actions), then delete that token in Cloudflare (My Profile, API Tokens).
 
 ### Publish a change
@@ -66,7 +66,7 @@ A build runs `npm run build` (tests, then about 10 minutes of viral data), then 
 2. GitHub: Pull requests, New pull request, base `main`, compare `dev`, Create pull request.
 3. After review: Merge pull request, Confirm merge.
 4. The build starts by itself (the Worker, Deployments tab). 10 to 15 minutes; success = live.
-5. Check the site: the footer shows "fetched <date>" and, on the Interactive Dashboard, "Viral loads as of <today>".
+5. Check the site: the footer shows when live data was fetched and "current data is from <today>" for viral loads.
 
 Deploy without a change: `curl -X POST "<deploy hook URL>"` (from step 5), or retry the latest build in the build list.
 
@@ -86,8 +86,8 @@ Proof of concept for demonstration only. Not for scientific interpretation. Chec
 |---|---|---|
 | Hero cards (At a Glance) | Samples, sites, active sites (last 12 months), organisms, data sources, latest sample | "Not Provided", "Not Applicable" and blank are not counted. |
 | Samples Captured Over Time | Total samples to date (Cumulative, the default) or samples per month by organism (Monthly) | Monthly: up to 7 organisms coloured, rest "Other" (gray). |
-| Environmental Sites | Pie of samples per site type, share in the legend | Top 8 plus "Other". |
-| Sample Coverage | One circle per site, size = samples, blue = active, light blue = historical. Hover for details, click to open its viral loads | Sites without GPS sit at their province capital. Samples with no site are not shown (count under the map). Click the map once to enable scroll zoom. |
+| Environmental Sites | One bar split by site type, share in the legend | Top 8 plus "Other". |
+| Sample Coverage | One circle per site, size = samples, blue = active, light blue = historical. Hover for details, click to open its viral loads | Sites without GPS sit at their province capital. Samples with no site are not shown. Click the map once to enable scroll zoom. |
 | Sample breakdown | X axis and Segment By dropdowns, swap button, Count or Percent | Max 7 segments plus "Other". |
 | Metadata completeness (QA, not public) | Hidden. Open `dashboard.html?qa=1`, scroll to the bottom, click Show metadata completeness | Per field: Recorded, Not provided or not applicable, Blank. Multivalued fields are approximate. Anyone who knows the address can open it; it is hidden, not protected. |
 | Viral loads | Province, City, Site, Organism, Gene Target, Measurement Unit; From and To dates; 3m, 6m, 12m, All; switches: line, full-series LOESS, PMMoV normalisation, log scale | RT-PCR only. Dots are the mean per date with error bars (SEM); the dashed line is a smoothed trend. Default: Alberta, Influenza A virus, last 12 months. "All" combines data without correcting for differences between labs. PMMoV normalisation awaits scientific sign-off and currently has data only for Ontario. |
@@ -97,7 +97,7 @@ Proof of concept for demonstration only. Not for scientific interpretation. Chec
 Monthly:
 
 1. The Worker, Deployments tab: recent builds succeeded, one per night.
-2. Interactive Dashboard footer: viral date is within a day or two.
+2. Footer: the viral loads date is within a day or two.
 3. Cloudflare, Workers & Pages, the Worker, Metrics: requests well under 100,000 per day.
 4. Build minutes (account billing or usage page): well under 3,000 per month (expect about 500).
 

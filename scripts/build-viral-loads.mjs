@@ -205,6 +205,7 @@ export function buildOutput(store, meta) {
   }
   const index = { generatedAt: meta.generatedAt, records: meta.records, p: provinces, lookup };
   files.set('index.json', index);
+  files.set('meta.json', { generatedAt: meta.generatedAt, records: meta.records }); // tiny, for the footer date
   return { files, index };
 }
 

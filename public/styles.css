@@ -271,13 +271,6 @@ body {
   width: 100%;
 }
 
-/* Two-column grid: samples over time + environmental sites */
-.panel-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 1.75rem;
-}
 
 /* --- Explore section: kicker, subtitle, axis selects, chart, CTAs --- */
 .explore-header {
@@ -887,6 +880,10 @@ a {
   min-height: 340px;
 }
 
+.chart-breakdown {
+  width: 100%;
+}
+
 /* The hidden attribute always wins over display rules */
 [hidden] {
   display: none !important;
@@ -1006,10 +1003,6 @@ a {
 @media (max-width: 960px) {
   .hero-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .panel-grid {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .explore-actions {
