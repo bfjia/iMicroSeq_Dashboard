@@ -66,28 +66,26 @@
       </section>
       <!-- viral:end -->
 
-      <!-- QA panels: hidden unless the address has ?qa=1, loaded only on request (public/js/dashboard.js) -->
-      <section class="explore-panel" id="completeness" hidden>
+      <!-- Data quality checks: hidden until opened from the footer or with ?qa=1 (public/js/qa.js) -->
+      <section class="explore-panel" id="qa" hidden>
         <header class="explore-header">
           <div class="explore-kicker">
             <span class="explore-badge">Data Quality</span>
-            <h2 class="explore-kicker-text">Metadata completeness</h2>
+            <h2 class="explore-kicker-text">Data quality checks</h2>
           </div>
-          <p class="explore-subtitle">How often each key field holds a real value, across all samples.</p>
-          <button type="button" id="completeness-load" class="retry-btn">Show metadata completeness</button>
+          <p class="explore-subtitle">For data stewards: problems in the portal data worth fixing at the source. Live, except viral measurement values (nightly).</p>
         </header>
-        <div id="completeness-chart" class="completeness-chart" hidden></div>
-        <div id="completeness-table"></div>
+        <div id="qa-root"></div>
       </section>
     </main>
 
     <footer class="site-footer">
+      <p>Data: <a href="https://imicroseq-dataportal.ca/">Canadian iMicroSeq Data Portal</a>.</p>
       <p>
-        Data: <a href="https://imicroseq-dataportal.ca/">Canadian iMicroSeq Data Portal</a>.
-        Live, cached up to 1 hour<span id="footer-fetched"></span>.
-        <span id="footer-viral-asof"></span>
+        Data is fetched live for all except for the viral load graph, however it is cached by up to 1 hour<span id="footer-fetched"></span>.
+        Viral loads data refreshed nightly, current data is from <span id="footer-viral-asof">…</span>.
       </p>
-      <p><a id="footer-help" href="#">How to use this dashboard</a></p>
+      <p><a id="footer-help" href="#">How to use this dashboard</a> · <button type="button" id="footer-qa" class="link-btn">Show data quality checks</button></p>
     </footer>
   </body>
 </html>

@@ -11,7 +11,7 @@ import { mkdir, writeFile, rm, rename } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
-import { trimBrackets, viralOrganism, viralValue, addStat, slug } from '../public/js/rules.js';
+import { trimBrackets, isNull, viralOrganism, viralValue, addStat, slug } from '../public/js/rules.js';
 import { API_DIRECT, VIRAL_ASSAY, PMMOV, DATE_FIELD } from '../public/js/config.js';
 
 const OUT = fileURLToPath(new URL('../public/data/viral/', import.meta.url));
@@ -39,10 +39,18 @@ const HITS = `query($s: JSON, $sa: JSON) { analysis {
 export const round = (v, digits = 4) => (v === 0 ? 0 : Number(v.toPrecision(digits)));
 const name = (v) => trimBrackets(v) || BLANK;
 
+// Data quality counts for the QA panel (written to meta.json): why measurements were or weren't plotted.
+export function makeQa() {
+  return { noDate: 0, plotted: 0, missing: 0, text: 0, capped: 0, textValues: {}, units: {} };
+}
+
 // Record -> { province, city, site, date, targets: [{ organism, gene, unit, value, ratio }] } or null (no date).
-export function parseRecord(d) {
+export function parseRecord(d, qa = makeQa()) {
   const date = dateKey(d[DATE_FIELD]);
-  if (!date) return null;
+  if (!date) {
+    qa.noDate += 1;
+    return null;
+  }
   const targets = [];
   for (const i of [1, 2, 3]) {
     const tax = d[`target_taxonomic_name_${i}`];
@@ -52,7 +60,18 @@ export function parseRecord(d) {
     if (![tax, gene, raw, unit].some((x) => trimBrackets(x))) continue;
     const organism = viralOrganism(tax);
     const value = viralValue(organism, raw);
-    if (value == null) continue;
+    if (value == null) {
+      const s = String(raw ?? '').trim();
+      if (isNull(s)) qa.missing += 1;
+      else if (viralValue('', s) != null) qa.capped += 1; // a number, dropped by the SARS-CoV-2 cap
+      else {
+        qa.text += 1;
+        qa.textValues[s] = (qa.textValues[s] || 0) + 1;
+      }
+      continue;
+    }
+    qa.plotted += 1;
+    qa.units[name(unit)] = (qa.units[name(unit)] || 0) + 1;
     targets.push({ organism, gene: name(gene), unit: name(unit), value, ratio: null });
   }
   // PMMoV normalisation: same record, same unit, PMMoV > 0 (mean if several PMMoV targets share the unit).
@@ -205,6 +224,10 @@ export function buildOutput(store, meta) {
   }
   const index = { generatedAt: meta.generatedAt, records: meta.records, p: provinces, lookup };
   files.set('index.json', index);
+  // Tiny file for the footer date and the QA panel.
+  const top = (obj, n) => Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n);
+  const qa = meta.qa && { ...meta.qa, textValues: top(meta.qa.textValues, 15), units: top(meta.qa.units, 20) };
+  files.set('meta.json', { generatedAt: meta.generatedAt, records: meta.records, ...(qa ? { qa } : {}) });
   return { files, index };
 }
 
@@ -249,7 +272,7 @@ async function main() {
   const store = makeStore();
   let total = null;
   let rows = 0;
-  let noDate = 0;
+  const qa = makeQa();
   let sa;
   for (let page = 1; ; page++) {
     const vars = sa ? { s: sqon, sa } : { s: sqon };
@@ -259,9 +282,7 @@ async function main() {
       console.log(`Total RT-PCR records: ${total} (${Math.ceil(total / PAGE)} pages of ${PAGE})`);
     }
     for (const e of hits.edges) {
-      const rec = parseRecord(e.node.data);
-      if (!rec) noDate += 1;
-      addRecord(store, rec);
+      addRecord(store, parseRecord(e.node.data, qa));
     }
     rows += hits.edges.length;
     if (page % 10 === 0 || hits.edges.length < PAGE) {
@@ -275,7 +296,7 @@ async function main() {
     process.exit(1);
   }
 
-  const { files } = buildOutput(store, { generatedAt: new Date().toISOString(), records: total });
+  const { files } = buildOutput(store, { generatedAt: new Date().toISOString(), records: total, qa });
 
   // Write everything to a temp dir, then swap it in, so a failed build never leaves partial output.
   const tmp = `${OUT.replace(/[\\/]$/, '')}.tmp`;
@@ -293,7 +314,7 @@ async function main() {
   await rename(tmp, OUT);
   await rm(old, { recursive: true, force: true });
 
-  console.log(`Rows: ${rows}/${total} (skipped without date: ${noDate}); sites: ${store.sites.size}`);
+  console.log(`Rows: ${rows}/${total} (skipped without date: ${qa.noDate}; measurements plotted ${qa.plotted}, missing ${qa.missing}, text ${qa.text}, over cap ${qa.capped}); sites: ${store.sites.size}`);
   console.log(`Wrote ${files.size} files, ${(bytes / 1e6).toFixed(2)} MB, to ${OUT} in ${((Date.now() - t0) / 1000).toFixed(0)}s`);
 }
 

@@ -3,7 +3,7 @@
 import { gql, aliased, dateRange, months } from './api.js';
 import { trimBrackets, isNull, parseCoord, monthKey } from './rules.js';
 import { DATE_FIELD, ACTIVE_DAYS, PALETTE } from './config.js';
-import { embed, panel, whenVisible, dataTable, colorScale, fmt, setFooter } from './charts.js';
+import { embed, panel, whenVisible, dataTable, colorScale, setFooter } from './charts.js';
 import { drawMap } from './map.js';
 
 const DAY = 86400000;
@@ -52,7 +52,6 @@ function loadIndex() {
     return {
       total: a.hits.total,
       sites,
-      noSite: siteBuckets.filter((b) => isNull(b.key)).reduce((s, b) => s + b.doc_count, 0),
       organisms: realCount(agg.data__organism.buckets),
       sources: realCount(agg.data__sample_collected_by_organisation_name.buckets),
       envBuckets: agg.data__environmental_site.buckets,
@@ -255,29 +254,44 @@ function breakdownRows(buckets) {
   return top.map(([category, value]) => ({ category, value, pct: value / total }));
 }
 
-// Pie: largest slice first, clockwise; "Other" (gray) last.
-function breakdownSpec(rows, narrow) {
-  const values = rows.map((r, i) => ({ ...r, rank: i, label: `${r.category} (${(r.pct * 100).toFixed(1)}%)` }));
+// One horizontal 100% bar: largest share first, "Other" (gray) last.
+// Segment edges are computed here so wide segments can carry their % label.
+function breakdownSpec(rows, width) {
+  let start = 0;
+  const values = rows.map((r) => {
+    const v = { ...r, start, end: start + r.pct, mid: start + r.pct / 2, label: `${r.category} (${(r.pct * 100).toFixed(1)}%)` };
+    start += r.pct;
+    return v;
+  });
   const labels = values.map((r) => r.label);
   const { range } = colorScale(rows.map((r) => r.category)); // "Other" stays gray
+  const tooltip = [
+    { field: 'category', title: 'Environmental site' },
+    { field: 'value', type: 'quantitative', title: 'Samples', format: ',' },
+    { field: 'pct', type: 'quantitative', title: 'Share', format: '.1%' },
+  ];
+  const x = { field: 'start', type: 'quantitative', title: null, scale: { domain: [0, 1] }, axis: { format: '%', grid: false, tickCount: 5 } };
   return {
     width: 'container',
-    height: 300,
+    height: 40,
     data: { values },
-    mark: { type: 'arc', stroke: '#ffffff', strokeWidth: 2 },
-    encoding: {
-      theta: { field: 'value', type: 'quantitative', stack: true },
-      order: { field: 'rank', type: 'quantitative' },
-      color: {
-        field: 'label', type: 'nominal', sort: labels, scale: { domain: labels, range },
-        legend: { orient: narrow ? 'bottom' : 'right', columns: 1, title: null, labelLimit: 260 },
+    layer: [
+      {
+        mark: { type: 'bar', stroke: '#ffffff', strokeWidth: 2 },
+        encoding: {
+          x, x2: { field: 'end' }, tooltip,
+          color: {
+            field: 'label', type: 'nominal', sort: labels, scale: { domain: labels, range },
+            legend: { orient: 'bottom', columns: width < 520 ? 1 : width < 900 ? 2 : 3, title: null, labelLimit: 300 },
+          },
+        },
       },
-      tooltip: [
-        { field: 'category', title: 'Environmental site' },
-        { field: 'value', type: 'quantitative', title: 'Samples', format: ',' },
-        { field: 'pct', type: 'quantitative', title: 'Share', format: '.1%' },
-      ],
-    },
+      {
+        transform: [{ filter: 'datum.pct >= 0.08' }],
+        mark: { type: 'text', color: '#ffffff', fontSize: 12, fontWeight: 600 },
+        encoding: { x: { field: 'mid', type: 'quantitative' }, text: { field: 'pct', format: '.0%' }, tooltip },
+      },
+    ],
   };
 }
 
@@ -286,7 +300,7 @@ function breakdown() {
   panel(el, async () => {
     const rows = breakdownRows((await loadIndex()).envBuckets);
     el.innerHTML = '';
-    await embed(el, breakdownSpec(rows, el.clientWidth < 420));
+    await embed(el, breakdownSpec(rows, el.clientWidth));
     dataTable(document.getElementById('breakdown-table'),
       [{ key: 'category', label: 'Environmental site' }, { key: 'value', label: 'Samples' }],
       rows);
@@ -302,8 +316,7 @@ function coverage() {
     el.innerHTML = '';
     const approx = await drawMap(el, d.sites);
     document.getElementById('coverage-note').textContent =
-      `${fmt(d.noSite)} samples have no site recorded and are not shown. ` +
-      (approx ? `${approx} site${approx === 1 ? '' : 's'} without coordinates are placed at their province's capital.` : '');
+      approx ? `${approx} site${approx === 1 ? '' : 's'} without coordinates are placed at their province's capital.` : '';
   });
 }
 

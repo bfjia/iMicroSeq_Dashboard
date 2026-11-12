@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   loess, withTrend, siteSeries, statSeries, hasRatio, rangeStart, pickOrganism, resolve, viralSpec, label,
 } from '../public/js/viral.js';
-import { parseRecord, makeStore, addRecord, buildOutput, uniqueId, round } from '../scripts/build-viral-loads.mjs';
+import { parseRecord, makeQa, makeStore, addRecord, buildOutput, uniqueId, round } from '../scripts/build-viral-loads.mjs';
 import { meanSem } from '../public/js/rules.js';
 import { SARS2, PMMOV } from '../public/js/config.js';
 
@@ -231,6 +231,20 @@ test('parseRecord: organism, value rules, PMMoV ratio in the same unit only', ()
   assert.equal(zeroPm.targets[0].ratio, null);
 });
 
+test('parseRecord counts data quality issues', () => {
+  const qa = makeQa();
+  parseRecord(rec({ sample_collection_start_date: '' }), qa);
+  parseRecord(rec({
+    target_taxonomic_name_1: SARS2, diagnostic_measurement_value_1: '2500', diagnostic_measurement_unit_1: 'u',
+    target_taxonomic_name_2: SARS2, diagnostic_measurement_value_2: '<LOD', diagnostic_measurement_unit_2: 'u',
+    target_taxonomic_name_3: SARS2, diagnostic_measurement_value_3: 'Not Provided [GENEPIO:0001668]', diagnostic_measurement_unit_3: 'u',
+  }), qa);
+  parseRecord(rec({ target_taxonomic_name_1: PMMOV, diagnostic_measurement_value_1: '7', diagnostic_measurement_unit_1: 'u [X:1]' }), qa);
+  assert.deepEqual(qa, { noDate: 1, plotted: 1, missing: 1, text: 1, capped: 1, textValues: { '<LOD': 1 }, units: { u: 1 } });
+  const { files } = buildOutput(makeStore(), { generatedAt: 'now', records: 3, qa });
+  assert.deepEqual(files.get('meta.json').qa.textValues, [['<LOD', 1]]);
+});
+
 test('uniqueId and round', () => {
   const used = new Set();
   assert.deepEqual([uniqueId('a', used), uniqueId('a', used), uniqueId('a', used)], ['a', 'a-2', 'a-3']);
@@ -270,6 +284,7 @@ test('buildOutput: tree, lookup, unique ids, rollups equal site values', () => {
   assert.equal(meanSem(prov[SARS2].N1.u.v[0]).mean, 3);
   assert.ok(files.has(`city/${on.c[1].id}.json`));
   assert.ok(files.has('index.json'));
+  assert.deepEqual(files.get('meta.json'), { generatedAt: 'now', records: 5 });
 
   const r = resolve(index, { province: null, site: 'Site B' });
   assert.equal(r.sel.city, 'All');

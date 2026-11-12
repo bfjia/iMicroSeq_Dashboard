@@ -74,7 +74,7 @@ export async function drawMap(el, sites) {
     }).addTo(map);
     marker.bindTooltip(
       `<strong>${escapeHtml(s.name)}</strong><br>${fmt(s.count)} samples · ${s.active ? 'Active' : 'Historical'}` +
-        `<br><span class="coverage-tooltip-hint">Click for viral loads</span>`,
+        `<br><span class="coverage-tooltip-hint">Click to see viral loads for this site</span>`,
       { direction: 'top', className: 'coverage-tooltip' },
     );
     marker.on('click', () => {

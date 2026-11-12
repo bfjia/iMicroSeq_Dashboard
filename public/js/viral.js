@@ -499,10 +499,6 @@ export function initViral(rootEl) {
   }
 
   function setup(loaded) {
-    const asof = document.getElementById('footer-viral-asof');
-    if (asof) {
-      asof.textContent = `Viral loads as of ${new Date(loaded.generatedAt).toLocaleDateString('en-CA', { dateStyle: 'medium' })}.`;
-    }
     for (const k of ['province', 'city', 'site', 'organism', 'gene', 'unit', 'from', 'to']) st[k] = getParam(k);
     st.norm = getParam('norm') === '1';
     st.log = getParam('log') === '1';

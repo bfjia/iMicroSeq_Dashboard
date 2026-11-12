@@ -271,13 +271,6 @@ body {
   width: 100%;
 }
 
-/* Two-column grid: samples over time + environmental sites */
-.panel-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 1.75rem;
-}
 
 /* --- Explore section: kicker, subtitle, axis selects, chart, CTAs --- */
 .explore-header {
@@ -887,16 +880,54 @@ a {
   min-height: 340px;
 }
 
+.chart-breakdown {
+  width: 100%;
+}
+
 /* The hidden attribute always wins over display rules */
 [hidden] {
   display: none !important;
 }
 
-.completeness-chart {
-  width: 100%;
+/* Data quality checks */
+.qa-block {
   max-width: 980px;
-  min-height: 300px;
-  margin: 0 auto;
+  margin: 0 auto 2.5rem;
+}
+
+.qa-block h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.qa-sub,
+.qa-note,
+.qa-ok {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+.qa-chart {
+  width: 100%;
+  min-height: 60px;
+}
+
+.qa-note {
+  margin-top: 0.5rem;
+}
+
+/* A button that looks like a footer link */
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: #4a63e7;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .sample-chart {
@@ -1006,10 +1037,6 @@ a {
 @media (max-width: 960px) {
   .hero-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .panel-grid {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .explore-actions {
