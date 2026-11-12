@@ -260,7 +260,8 @@ function breakdownRows(buckets) {
 
 // One horizontal 100% bar: largest share first, "Other" (gray) last.
 // Segment edges are computed here so wide segments can carry their % label.
-function breakdownSpec(rows, width) {
+// The legend is HTML (breakdownLegend) so it can fill the panel width and reflow.
+function breakdownSpec(rows, range) {
   let start = 0;
   const values = rows.map((r) => {
     const v = { ...r, start, end: start + r.pct, mid: start + r.pct / 2, label: `${r.category} (${(r.pct * 100).toFixed(1)}%)` };
@@ -268,7 +269,6 @@ function breakdownSpec(rows, width) {
     return v;
   });
   const labels = values.map((r) => r.label);
-  const { range } = colorScale(rows.map((r) => r.category)); // "Other" stays gray
   const tooltip = [
     { field: 'category', title: 'Environmental site' },
     { field: 'value', type: 'quantitative', title: 'Samples', format: ',' },
@@ -285,8 +285,7 @@ function breakdownSpec(rows, width) {
         encoding: {
           x, x2: { field: 'end' }, tooltip,
           color: {
-            field: 'label', type: 'nominal', sort: labels, scale: { domain: labels, range },
-            legend: { orient: 'bottom', columns: width < 520 ? 1 : width < 900 ? 2 : 3, title: null, labelLimit: 300 },
+            field: 'label', type: 'nominal', sort: labels, scale: { domain: labels, range }, legend: null,
           },
         },
       },
@@ -299,12 +298,27 @@ function breakdownSpec(rows, width) {
   };
 }
 
+function breakdownLegend(rows, range) {
+  const ul = document.createElement('ul');
+  ul.className = 'chart-legend';
+  rows.forEach((r, i) => {
+    const li = document.createElement('li');
+    const sw = document.createElement('i');
+    sw.style.background = range[i];
+    li.append(sw, `${r.category} (${(r.pct * 100).toFixed(1)}%)`);
+    ul.append(li);
+  });
+  return ul;
+}
+
 function breakdown() {
   const el = document.getElementById('breakdown-chart');
   panel(el, async () => {
     const rows = breakdownRows((await loadIndex()).envBuckets);
+    const { range } = colorScale(rows.map((r) => r.category)); // "Other" stays gray
     el.innerHTML = '';
-    await embed(el, breakdownSpec(rows, el.clientWidth));
+    await embed(el, breakdownSpec(rows, range));
+    el.append(breakdownLegend(rows, range));
     dataTable(document.getElementById('breakdown-table'),
       [{ key: 'category', label: 'Environmental site' }, { key: 'value', label: 'Samples' }],
       rows);

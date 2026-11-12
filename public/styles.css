@@ -850,6 +850,34 @@ a {
   width: 100%;
 }
 
+/* HTML legend that fills the panel width: as many equal columns as fit. When narrow it
+   grows downwards instead: never wider than the panel, long labels wrap. */
+.chart-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+  gap: 0.3rem 1.25rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: #1f2933;
+  text-align: left;
+}
+
+.chart-legend li {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.chart-legend i {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-right: 0.4rem;
+}
+
 /* The hidden attribute always wins over display rules */
 [hidden] {
   display: none !important;
