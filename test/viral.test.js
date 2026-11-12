@@ -6,6 +6,7 @@ import {
 import { parseRecord, makeQa, makeStore, addRecord, buildOutput, uniqueId, round } from '../scripts/build-viral-loads.mjs';
 import { meanSem } from '../public/js/rules.js';
 import { SARS2, PMMOV } from '../public/js/config.js';
+import { toCsv } from '../public/js/charts.js';
 
 // ─── Old implementation (git show 3bf8ef1:public/app.js), copied verbatim minus logging ──
 const OLD_SPAN = 0.2;
@@ -320,6 +321,12 @@ test('viralSpec: empty, linear and symlog', () => {
   assert.equal(lin.layer[1].encoding.y.scale.zero, true);
   const log = viralSpec(rows, { unit: 'u', yTitle: 'u / PMMoV', log: true, single: true, norm: true });
   assert.deepEqual(log.layer[1].encoding.y.scale, { type: 'symlog', constant: 0.5, nice: true });
-  assert.equal(log.layer[2].mark.color, '#6b7280');
-  assert.deepEqual(log.layer[2].encoding.strokeDash.scale.range, [[8, 5]]);
+  assert.equal(log.layer[2].mark.color, '#878e9b');
+  assert.deepEqual(log.layer[2].encoding.strokeDash.scale.range, [[1, 0]]);
+});
+
+test('toCsv quotes commas and quotes, and defuses formula-like text', () => {
+  const cols = [{ key: 'a', label: 'Name' }, { key: 'n', label: 'Samples' }];
+  const csv = toCsv(cols, [{ a: 'Lab A, "North"', n: 5 }, { a: '=SUM(1)', n: -2 }, { a: '-0.5', n: null }]);
+  assert.equal(csv, 'Name,Samples\r\n"Lab A, ""North""",5\r\n\'=SUM(1),-2\r\n-0.5,');
 });

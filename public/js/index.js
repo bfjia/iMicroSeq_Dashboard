@@ -3,7 +3,7 @@
 import { gql, aliased, dateRange, months } from './api.js';
 import { trimBrackets, isNull, parseCoord, monthKey } from './rules.js';
 import { DATE_FIELD, ACTIVE_DAYS, PALETTE } from './config.js';
-import { embed, panel, whenVisible, dataTable, colorScale, setFooter } from './charts.js';
+import { embed, panel, whenVisible, dataTable, colorScale, setFooter, SPINNER } from './charts.js';
 import { drawMap } from './map.js';
 
 const DAY = 86400000;
@@ -80,8 +80,11 @@ function animateCount(el, target) {
   requestAnimationFrame(tick);
 }
 
+const HERO_IDS = ['hero-samples', 'hero-sites', 'hero-active', 'hero-organisms', 'hero-sources', 'hero-latest'];
+
 async function hero() {
   const err = document.getElementById('hero-error');
+  for (const id of HERO_IDS) document.getElementById(id).innerHTML = SPINNER; // again on retry
   try {
     const d = await loadIndex();
     err.hidden = true;
@@ -96,6 +99,7 @@ async function hero() {
     });
   } catch (e) {
     console.error(e);
+    for (const id of HERO_IDS) document.getElementById(id).textContent = '–';
     err.hidden = false;
     err.innerHTML = 'Could not load the summary numbers from the data portal. ';
     const btn = document.createElement('button');

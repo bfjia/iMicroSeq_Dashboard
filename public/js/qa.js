@@ -3,7 +3,7 @@
 // which comes from the nightly build (data/viral/meta.json).
 import { gql, aliased, isIn } from './api.js';
 import { trimBrackets, isNull, parseCoord } from './rules.js';
-import { COMPLETENESS_FIELDS, REQUIRED_FIELDS, QA_NAME_FIELDS, DATE_FIELD, ACTIVE_DAYS, PALETTE, OTHER_COLOR } from './config.js';
+import { COMPLETENESS_FIELDS, REQUIRED_FIELDS, QA_NAME_FIELDS, DATE_FIELD, ACTIVE_DAYS, PALETTE, OTHER_COLOR, SARS2_MAX } from './config.js';
 import { embed, panel, dataTable, viralMeta, fmt } from './charts.js';
 
 const DAY = 86400000;
@@ -72,7 +72,8 @@ async function completeness(el, tableEl) {
       ],
     },
   });
-  dataTable(tableEl, [{ key: 'field', label: 'Field' }, { key: 'state', label: 'Status' }, { key: 'n', label: 'Samples' }], rows);
+  dataTable(tableEl, [{ key: 'field', label: 'Field' }, { key: 'state', label: 'Status' }, { key: 'n', label: 'Samples' }], rows,
+    { file: 'qa-completeness' });
 }
 
 // ─── 2. Latest sample per data source ────────────────────────────────────────
@@ -110,7 +111,8 @@ async function freshness(el, tableEl) {
       ],
     },
   });
-  dataTable(tableEl, [{ key: 'name', label: 'Collecting organisation' }, { key: 'latest', label: 'Latest sample' }, { key: 'n', label: 'Samples' }], rows);
+  dataTable(tableEl, [{ key: 'name', label: 'Collecting organisation' }, { key: 'latest', label: 'Latest sample' }, { key: 'n', label: 'Samples' }], rows,
+    { file: 'qa-latest-sample' });
 }
 
 // ─── 3. Values written more than one way ─────────────────────────────────────
@@ -141,7 +143,7 @@ async function names(el) {
   el.innerHTML = rows.length ? '' : '<p class="qa-ok">No problems found.</p>';
   if (rows.length) {
     dataTable(el, [{ key: 'field', label: 'Field' }, { key: 'issue', label: 'Issue' }, { key: 'values', label: 'Values (samples)' }, { key: 'n', label: 'Samples' }],
-      rows, { open: true, title: `${rows.length} value${rows.length === 1 ? '' : 's'} to fix` });
+      rows, { open: true, title: `${rows.length} value${rows.length === 1 ? '' : 's'} to fix`, file: 'qa-spellings' });
   }
 }
 
@@ -188,7 +190,8 @@ async function locations(el, tableEl) {
   note.className = 'qa-note';
   note.textContent = `${fmt(noSite)} samples have no site recorded; ${fmt(noProv)} have no province/territory recorded.`;
   el.append(note);
-  dataTable(tableEl, [{ key: 'province', label: 'Province/Territory' }, { key: 'status', label: 'Status' }, { key: 'n', label: 'Sites' }], rows);
+  dataTable(tableEl, [{ key: 'province', label: 'Province/Territory' }, { key: 'status', label: 'Status' }, { key: 'n', label: 'Sites' }], rows,
+    { file: 'qa-locations' });
 }
 
 // ─── 5. Viral measurement values (nightly build) ─────────────────────────────
@@ -204,7 +207,7 @@ async function measurements(el, tableEl) {
     ['Plotted', q.plotted, OK],
     ['Not provided / blank', q.missing, OTHER_COLOR],
     ['Text, not a number', q.text, ISSUE],
-    ['SARS-CoV-2 above the cap (dropped)', q.capped, PALETTE[3]],
+    [`SARS-CoV-2 above the cap (>${SARS2_MAX})`, q.capped, PALETTE[3]],
   ];
   const total = cats.reduce((s, c) => s + c[1], 0);
   let start = 0;
@@ -235,7 +238,7 @@ async function measurements(el, tableEl) {
     ...q.units.map(([v, n]) => ({ kind: 'Unit of plotted values', value: v, n })),
   ];
   dataTable(tableEl, [{ key: 'kind', label: 'Kind' }, { key: 'value', label: 'Value' }, { key: 'n', label: 'Measurements' }], table,
-    { title: 'Show most common text values and units' });
+    { title: 'Show most common text values and units', file: 'qa-viral-values' });
 }
 
 // ─── Start ───────────────────────────────────────────────────────────────────

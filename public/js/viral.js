@@ -255,11 +255,12 @@ export function viralSpec(rows, { unit, yTitle, showLine, log, single, norm, nar
       },
       {
         // Monotone curve through the fitted values: smooth, and never overshoots them (so never below 0).
-        mark: { type: 'line', interpolate: 'monotone', strokeWidth: 2.5, color: '#6b7280' },
+        // Solid: the strokeDash channel ([1, 0] = no gaps) is only there to give the trend a legend entry.
+        mark: { type: 'line', interpolate: 'monotone', strokeWidth: 3.125, color: '#878e9b' },
         encoding: {
           x,
           y: y('valueSmooth'),
-          strokeDash: { field: 'lineType', type: 'nominal', scale: { domain: [TREND], range: [[8, 5]] }, legend: { title: null, orient: legendAt } },
+          strokeDash: { field: 'lineType', type: 'nominal', scale: { domain: [TREND], range: [[1, 0]] }, legend: { title: null, orient: legendAt, symbolStrokeColor: '#878e9b', symbolStrokeWidth: 3 } },
         },
       },
       // Hover: nearest date anywhere in the plot shows a crosshair and the tooltip.
@@ -327,7 +328,7 @@ function markup() {
       </div>
     </div>
     <p class="explore-subtitle viral-load-smoothing-note">
-      The gray dashed trend line is LOESS-smoothed (polynomial degree ${LOESS_DEGREE}, span ${LOESS_SPAN}).<br>By default it fits across all data matching your filters. Turn off Full-series LOESS to smooth only across the visible date window.
+      The solid gray trend line is LOESS-smoothed (polynomial degree ${LOESS_DEGREE}, span ${LOESS_SPAN}).<br>By default it fits across all data matching your filters. Turn off Full-series LOESS to smooth only across the visible date window.
     </p>
     <p id="viral-all-filter-warning" class="viral-all-filter-warning explore-subtitle" hidden aria-live="polite"></p>
     <div id="viral-load-chart" class="viral-load-chart"></div>

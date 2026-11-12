@@ -442,7 +442,7 @@ body {
   min-height: 600px;
   transition: opacity 0.15s ease;
 }
-/* Refetching: keep the previous chart, dimmed, instead of a skeleton flash */
+/* Refetching: keep the previous chart, dimmed, instead of a loading circle */
 .viral-load-chart.viral-busy {
   opacity: 0.5;
 }
@@ -681,24 +681,46 @@ a {
   text-underline-offset: 6px;
 }
 
-/* Loading placeholder shown inside a panel until its data arrives */
-.skeleton {
+/* Loading circle: inside a panel until its data arrives, in hero cards and the footer */
+.panel-loading {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 180px;
   height: 100%;
-  border-radius: 10px;
-  background: linear-gradient(90deg, #f1f3f8 25%, #e8ebf3 50%, #f1f3f8 75%);
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.4s ease-in-out infinite;
-  color: #6b7280;
-  font-size: 0.9rem;
 }
 
-@keyframes skeleton-shimmer {
+.spinner {
+  display: inline-block;
+  width: 36px;
+  height: 36px;
+  border: 3px solid #dbe1f5;
+  border-top-color: #4a63e7;
+  border-radius: 50%;
+  vertical-align: middle;
+  animation: spin 0.8s linear infinite;
+}
+
+.hero-value .spinner {
+  width: 28px;
+  height: 28px;
+}
+
+.spinner-small {
+  width: 0.9em;
+  height: 0.9em;
+  border-width: 2px;
+}
+
+@keyframes spin {
   to {
-    background-position: -200% 0;
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.4s;
   }
 }
 
@@ -884,6 +906,27 @@ a {
   text-align: center;
 }
 
+.csv-btn {
+  margin-left: 0.75rem;
+  padding: 0.15rem 0.7rem;
+  font: inherit;
+  font-size: 0.8rem;
+  color: #4a63e7;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.csv-btn:hover {
+  border-color: #4a63e7;
+}
+
+.csv-btn:focus-visible {
+  outline: 2px solid #4a63e7;
+  outline-offset: 1px;
+}
+
 .data-table-wrap {
   max-height: 320px;
   overflow: auto;
@@ -946,6 +989,17 @@ a {
 .coverage-tooltip-hint {
   color: #6b7280;
   font-size: 0.75rem;
+}
+
+/* Marker holding several sites: one block per site */
+.coverage-site {
+  margin-top: 0.35rem;
+}
+
+.coverage-popup .leaflet-popup-content {
+  margin: 0.6rem 0.8rem;
+  font-size: 0.8rem;
+  text-align: left;
 }
 
 /* CTAs are links now */
