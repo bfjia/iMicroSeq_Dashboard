@@ -1,13 +1,15 @@
 // Data quality checks page (qa.html) for data stewards, linked from the Interactive Dashboard footer.
 // All live except "Viral measurement values", which comes from the nightly build (data/viral/meta.json).
 // Field dropdowns list every portal field: the list comes live from the API (configs.extended).
-import { gql, aliased, aliasedMany, and, isIn, dateRange, years, months, fieldList } from './api.js';
+import { gql, aliased, aliasedMany, and, isIn, not, dateRange, periodRange, years, months, fieldList } from './api.js';
 import { trimBrackets, isNull, parseCoord, valuePattern } from './rules.js';
 import {
   COMPLETENESS_FIELDS, REQUIRED_FIELDS, QA_NAME_FIELDS, QA_GROUP_FIELDS, QA_MAX_GROUPS, QA_DEFAULTS, QA_FILTER_FIELD, EXPLORER_FIELDS,
   DATE_FIELD, ACTIVE_DAYS, PALETTE, OTHER_COLOR, SARS2_MAX,
 } from './config.js';
-import { embed, panel, whenVisible, dataTable, viralMeta, fmt, setFooter, getParam, setParams, SPINNER } from './charts.js';
+import {
+  embed, panel, whenVisible, dataTable, viralMeta, fmt, setFooter, getParam, setParams, linkTo, LINK_TIP, LINK_COL, SPINNER,
+} from './charts.js';
 
 const DAY = 86400000;
 const TODAY = Math.floor(Date.now() / DAY) * DAY;
@@ -95,6 +97,19 @@ function states(f, agg, total) {
   return { recorded: total - blank - nullN, nullN, nulls, blank };
 }
 
+// Portal filters for a text field's states, from its buckets (number and date fields: none).
+// "Not provided" terms are those among the buckets read, like the counts.
+const nullKeys = (buckets) => buckets.filter((b) => b.key !== '__missing__' && isNull(b.key)).map((b) => b.key);
+const notRecorded = (f, buckets) => isIn(f, ['__missing__', ...nullKeys(buckets)]);
+function stateFilter(f, state, buckets) {
+  if (isNum(f)) return null;
+  if (state === STATES[2]) return isIn(f, ['__missing__']);
+  if (state === STATES[1]) return nullKeys(buckets).length ? isIn(f, nullKeys(buckets)) : null;
+  return not(notRecorded(f, buckets));
+}
+// Row fields linking to the portal (records under the page filter too); no sqon: no link.
+const link = (sqon, tip) => linkTo(sqon && scoped(sqon), tip);
+
 // All values of one field (up to MAX_BUCKETS) and the record total. Shared by several reports (memoised).
 async function valuesOf(f, filter = FILTER) {
   const { total, a } = await agg(`data__${f} { buckets(max: ${MAX_BUCKETS}) { key doc_count } }`, filter);
@@ -156,11 +171,13 @@ function stateBars(el, rows, y, yTitle, order, step = 26) {
       x: { aggregate: 'sum', field: 'n', type: 'quantitative', stack: 'normalize', title: 'Share of samples', axis: { format: '.0%' } },
       color: { field: 'state', type: 'nominal', sort: STATES, scale: { domain: STATES, range: STATE_COLORS }, legend: legend(el) },
       order: { field: 'rank', type: 'quantitative' },
+      detail: { field: 'link' }, // keeps the link through the sum
       tooltip: [
         { field: y, title: yTitle },
         { field: 'state', title: 'Status' },
         { aggregate: 'sum', field: 'n', type: 'quantitative', title: 'Samples', format: ',' },
         { aggregate: 'sum', field: 'pct', type: 'quantitative', title: 'Share', format: '.1%' },
+        ...(rows.some((r) => r.link) ? [LINK_TIP] : []),
       ],
     },
   });
@@ -174,13 +191,16 @@ async function completeness(el, tableEl, { set }) {
   for (const f of fields) {
     const s = states(f, a[`data__${f}`], total);
     const field = label(f) + (REQUIRED_FIELDS.includes(f) ? ' (required)' : '');
-    [s.recorded, s.nullN, s.blank].forEach((n, i) => rows.push({ field, state: STATES[i], rank: i, n, pct: n / total, recordedPct: s.recorded / total }));
+    [s.recorded, s.nullN, s.blank].forEach((n, i) => rows.push({
+      field, state: STATES[i], rank: i, n, pct: n / total, recordedPct: s.recorded / total,
+      ...link(n ? stateFilter(f, STATES[i], a[`data__${f}`].buckets || []) : null),
+    }));
   }
   const order = [...new Set(rows.slice().sort((x, y) => x.recordedPct - y.recordedPct).map((r) => r.field))]; // worst first
   el.innerHTML = '';
   await stateBars(el, rows, 'field', 'Field', order, set === 'all' ? 20 : 26);
   if (set === 'all') note(el, `${fields.length} fields. "Not provided" counts are approximate for fields with more than ${SCAN} different values.`);
-  dataTable(tableEl, [{ key: 'field', label: 'Field' }, { key: 'state', label: 'Status' }, { key: 'n', label: 'Samples' }], rows,
+  dataTable(tableEl, [{ key: 'field', label: 'Field' }, { key: 'state', label: 'Status' }, { key: 'n', label: 'Samples' }, LINK_COL], rows,
     { file: 'qa-completeness' });
 }
 
@@ -201,14 +221,21 @@ async function byGroup(el, tableEl, { field, group }) {
   const rows = [];
   groups.forEach((g, i) => {
     for (const f of fields) {
+      const buckets = res[`g${i}`][`data__${f}`].buckets || [];
       const s = states(f, res[`g${i}`][`data__${f}`], g.n);
-      rows.push({ group: g.label, field: label(f), total: g.n, recorded: s.recorded, nullN: s.nullN, blank: s.blank, pct: g.n ? s.recorded / g.n : 0 });
+      const inGroup = isIn(group, g.raw);
+      const sf = (k) => stateFilter(f, STATES[k], buckets);
+      rows.push({
+        group: g.label, field: label(f), total: g.n, recorded: s.recorded, nullN: s.nullN, blank: s.blank, pct: g.n ? s.recorded / g.n : 0,
+        links: [s.recorded, s.nullN, s.blank].map((n, k) => link(n && sf(k) ? and(inGroup, sf(k)) : null)), // per bar (one field)
+        ...link(s.recorded < g.n && !isNum(f) ? and(inGroup, notRecorded(f, buckets)) : null, 'Click to browse the samples without a real value ↗'),
+      });
     }
   });
   el.innerHTML = '';
   const groupOrder = groups.map((g) => g.label);
   if (field) {
-    const bars = rows.flatMap((r) => [r.recorded, r.nullN, r.blank].map((n, i) => ({ group: r.group, state: STATES[i], rank: i, n, pct: r.total ? n / r.total : 0 })));
+    const bars = rows.flatMap((r) => [r.recorded, r.nullN, r.blank].map((n, i) => ({ group: r.group, state: STATES[i], rank: i, n, pct: r.total ? n / r.total : 0, ...r.links[i] })));
     await stateBars(el, bars, 'group', label(group), groupOrder, 22);
   } else {
     const small = narrow(el);
@@ -226,6 +253,7 @@ async function byGroup(el, tableEl, { field, group }) {
           { field: 'nullN', type: 'quantitative', title: 'Not provided / not applicable', format: ',' },
           { field: 'blank', type: 'quantitative', title: 'Blank', format: ',' },
           { field: 'total', type: 'quantitative', title: 'Samples', format: ',' },
+          LINK_TIP,
         ],
       },
       layer: [
@@ -253,6 +281,7 @@ async function byGroup(el, tableEl, { field, group }) {
   dataTable(tableEl, [
     { key: 'group', label: label(group) }, { key: 'field', label: 'Field' }, { key: 'recorded', label: 'Recorded' },
     { key: 'nullN', label: 'Not provided / not applicable' }, { key: 'blank', label: 'Blank' }, { key: 'total', label: 'Samples' },
+    { ...LINK_COL, label: 'Without a real value' },
   ], rows, { file: 'qa-completeness-by-group' });
 }
 
@@ -267,7 +296,10 @@ async function freshness(el, tableEl, { group }) {
   const rows = groups.map((g, i) => {
     const latest = res[`g${i}`][`data__${DATE_FIELD}`].stats.max;
     const stale = !latest || latest < TODAY - ACTIVE_DAYS * DAY;
-    return { name: g.label, n: g.n, latest: latest ? day(latest) : '', status: statuses[stale ? 1 : 0], days: latest ? Math.round((TODAY - latest) / DAY) : null };
+    return {
+      name: g.label, n: g.n, latest: latest ? day(latest) : '', status: statuses[stale ? 1 : 0], days: latest ? Math.round((TODAY - latest) / DAY) : null,
+      ...link(isIn(group, g.raw), "Click to browse this group's samples ↗"),
+    };
   }).sort((x, y) => (y.latest || '').localeCompare(x.latest || ''));
   el.innerHTML = '';
   await embed(el, {
@@ -284,11 +316,12 @@ async function freshness(el, tableEl, { group }) {
         { field: 'latest', type: 'temporal', title: 'Latest sample', format: '%Y-%m-%d' },
         { field: 'days', type: 'quantitative', title: 'Days ago', format: ',' },
         { field: 'n', type: 'quantitative', title: 'Samples', format: ',' },
+        LINK_TIP,
       ],
     },
   });
   leftOut(el, all, group);
-  dataTable(tableEl, [{ key: 'name', label: label(group) }, { key: 'latest', label: 'Latest sample' }, { key: 'n', label: 'Samples' }], rows,
+  dataTable(tableEl, [{ key: 'name', label: label(group) }, { key: 'latest', label: 'Latest sample' }, { key: 'n', label: 'Samples' }, LINK_COL], rows,
     { file: 'qa-latest-sample' });
 }
 
@@ -313,7 +346,7 @@ async function textProfile(el, tableEl, f) {
   const real = values.filter((b) => !isNull(b.key));
   const kind = (b) => (b.key === '__missing__' ? STATES[2] : isNull(b.key) ? STATES[1] : STATES[0]);
   const top = buckets.slice().sort((x, y) => y.doc_count - x.doc_count).slice(0, 25)
-    .map((b) => ({ value: b.key === '__missing__' ? '(blank)' : b.key, kind: kind(b), n: b.doc_count, pct: b.doc_count / total }));
+    .map((b) => ({ value: b.key === '__missing__' ? '(blank)' : b.key, kind: kind(b), n: b.doc_count, pct: b.doc_count / total, ...link(isIn(f, [b.key])) }));
   el.innerHTML = '';
   await embed(el, {
     width: 'container',
@@ -329,6 +362,7 @@ async function textProfile(el, tableEl, f) {
         { field: 'kind', title: 'Status' },
         { field: 'n', type: 'quantitative', title: 'Samples', format: ',' },
         { field: 'pct', type: 'quantitative', title: 'Share', format: '.1%' },
+        LINK_TIP,
       ],
     },
   });
@@ -355,8 +389,8 @@ async function textProfile(el, tableEl, f) {
   if (spell.length) {
     dataTable(t2, SPELL_COLS, spell, { open: true, title: `${spell.length} value${spell.length === 1 ? '' : 's'} written more than one way`, file: `qa-spellings-${f}` });
   }
-  dataTable(t3, [{ key: 'value', label: 'Value' }, { key: 'kind', label: 'Status' }, { key: 'n', label: 'Samples' }],
-    values.map((b) => ({ value: b.key, kind: kind(b), n: b.doc_count })), { title: 'Show all values', file: `qa-values-${f}` });
+  dataTable(t3, [{ key: 'value', label: 'Value' }, { key: 'kind', label: 'Status' }, { key: 'n', label: 'Samples' }, LINK_COL],
+    values.map((b) => ({ value: b.key, kind: kind(b), n: b.doc_count, ...link(isIn(f, [b.key])) })), { title: 'Show all values', file: `qa-values-${f}` });
 }
 
 async function numberProfile(el, tableEl, f) {
@@ -375,7 +409,8 @@ async function numberProfile(el, tableEl, f) {
     : null;
   const { a: h } = await agg(`data__${f} { histogram(interval: ${step}) { buckets { key doc_count } } }`);
   const bins = h[`data__${f}`].histogram.buckets.filter((b) => b.doc_count)
-    .map((b) => ({ from: Number(b.key), to: Number(b.key) + step, n: b.doc_count }));
+    .map((b) => ({ from: Number(b.key), to: Number(b.key) + step, n: b.doc_count }))
+    .map((b) => ({ ...b, ...link(and({ op: '>=', content: { fieldName: `data.${f}`, value: b.from } }, { op: '<', content: { fieldName: `data.${f}`, value: b.to } })) }));
   const type = date ? 'temporal' : 'quantitative';
   await embed(el, {
     width: 'container',
@@ -391,13 +426,14 @@ async function numberProfile(el, tableEl, f) {
         { field: 'from', type, title: 'From', format: date ? '%Y-%m-%d' : ',' },
         { field: 'to', type, title: 'To (not including)', format: date ? '%Y-%m-%d' : ',' },
         { field: 'n', type: 'quantitative', title: 'Samples', format: ',' },
+        LINK_TIP,
       ],
     },
   });
   const range = date ? `Earliest ${day(st.min)}, latest ${day(st.max)}` : `Lowest ${fmt(st.min)}, highest ${fmt(st.max)}, mean ${fmt(Math.round(st.avg * 100) / 100)}`;
   const future = extra ? (await extra).future[`data__${f}`].stats.count : 0;
   note(el, `${fmt(total)} samples: ${fmt(st.count)} (${pct(st.count, total)}) have a value, ${fmt(total - st.count)} (${pct(total - st.count, total)}) blank. ${range}.${date ? ` ${fmt(future)} dated after today.` : ''}`);
-  dataTable(tableEl, [{ key: 'from', label: 'From' }, { key: 'to', label: 'To (not including)' }, { key: 'n', label: 'Samples' }],
+  dataTable(tableEl, [{ key: 'from', label: 'From' }, { key: 'to', label: 'To (not including)' }, { key: 'n', label: 'Samples' }, LINK_COL],
     bins.map((b) => (date ? { ...b, from: day(b.from), to: day(b.to) } : b)), { file: `qa-histogram-${f}` });
 }
 
@@ -413,7 +449,16 @@ async function overTime(el, tableEl, { field: f, period }) {
   const keyOf = (t) => new Date(t).toISOString().slice(0, period === 'month' ? 7 : 4);
   const totals = new Map();
   for (const b of d.histogram.buckets) totals.set(keyOf(Number(b.key)), (totals.get(keyOf(Number(b.key))) || 0) + b.doc_count);
-  const top = isNum(f) ? [] : merge((await valuesOf(f)).buckets).filter((v) => !v.isNull).slice(0, VALUE_COLORS.length);
+  const merged = isNum(f) ? [] : merge((await valuesOf(f)).buckets);
+  const top = merged.filter((v) => !v.isNull).slice(0, VALUE_COLORS.length);
+  const nulls = merged.filter((v) => v.isNull).flatMap((v) => v.raw);
+  // Portal filter per colour (text fields): each top value, the rest, not provided, blank.
+  const catFilters = isNum(f) ? [] : [
+    ...top.map((v) => isIn(f, v.raw)),
+    not(isIn(f, ['__missing__', ...nulls, ...top.flatMap((v) => v.raw)])),
+    nulls.length ? isIn(f, nulls) : null,
+    isIn(f, ['__missing__']),
+  ];
   const res = await aliasedMany(ps.map((p, i) => ({ alias: `p${i}`, sqon: scoped(dateRange(p.start, p.end)) })), aggSel(f, 100));
   const cats = isNum(f) ? ['Recorded', STATES[2]] : [...top.map((v) => v.label), 'Other values', STATES[1], STATES[2]];
   const colors = isNum(f) ? [OK, OTHER_COLOR] : [...top.map((_, i) => VALUE_COLORS[i]), OTHER_VALUES, ISSUE, OTHER_COLOR];
@@ -430,7 +475,13 @@ async function overTime(el, tableEl, { field: f, period }) {
       const sum = tops.reduce((x, y) => x + y, 0);
       return [...tops, Math.max(0, s.recorded - sum), s.nullN, s.blank];
     })();
-    counts.forEach((n, k) => { if (n) rows.push({ period: period === 'month' ? `${p.key}-01` : `${p.key}-01-01`, key: p.key, cat: cats[k], rank: k, n, pct: n / total }); });
+    counts.forEach((n, k) => {
+      if (!n) return;
+      rows.push({
+        period: period === 'month' ? `${p.key}-01` : `${p.key}-01-01`, key: p.key, cat: cats[k], rank: k, n, pct: n / total,
+        ...link(catFilters[k] ? and(periodRange(p.key), catFilters[k]) : null),
+      });
+    });
   });
   el.innerHTML = '';
   await embed(el, {
@@ -445,16 +496,18 @@ async function overTime(el, tableEl, { field: f, period }) {
       y: { aggregate: 'sum', field: 'n', type: 'quantitative', stack: 'normalize', title: 'Share of samples', axis: { format: '.0%' } },
       color: { field: 'cat', type: 'nominal', sort: cats, scale: { domain: cats, range: colors }, legend: { ...legend(el), orient: 'bottom', columns: narrow(el) ? 1 : 3 } },
       order: { field: 'rank', type: 'quantitative' },
+      detail: { field: 'link' }, // keeps the link through the sum
       tooltip: [
         { field: 'key', title: period === 'month' ? 'Month' : 'Year' },
         { field: 'cat', title: label(f) },
         { aggregate: 'sum', field: 'n', type: 'quantitative', title: 'Samples', format: ',' },
         { aggregate: 'sum', field: 'pct', type: 'quantitative', title: 'Share', format: '.1%' },
+        ...(rows.some((r) => r.link) ? [LINK_TIP] : []),
       ],
     },
   });
   note(el, `By ${label(DATE_FIELD).toLowerCase()}; samples without one are left out.${isNum(f) ? '' : ` ${top.length === 1 ? 'The most common value has its' : `The ${top.length} most common values have their`} own colour.`}`);
-  dataTable(tableEl, [{ key: 'key', label: period === 'month' ? 'Month' : 'Year' }, { key: 'cat', label: label(f) }, { key: 'n', label: 'Samples' }], rows,
+  dataTable(tableEl, [{ key: 'key', label: period === 'month' ? 'Month' : 'Year' }, { key: 'cat', label: label(f) }, { key: 'n', label: 'Samples' }, LINK_COL], rows,
     { file: `qa-over-time-${f}` });
 }
 

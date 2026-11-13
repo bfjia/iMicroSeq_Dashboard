@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  loess, withTrend, parseSpan, siteSeries, statSeries, hasRatio, rangeStart, pickOrganism, resolve, viralSpec, label,
+  loess, withTrend, parseSpan, siteSeries, statSeries, hasRatio, rangeStart, pickOrganism, resolve, viralSpec, label, dateFilter,
 } from '../public/js/viral.js';
 import { parseRecord, makeQa, makeStore, addRecord, buildOutput, uniqueId, round } from '../scripts/build-viral-loads.mjs';
 import { meanSem } from '../public/js/rules.js';
@@ -314,6 +314,23 @@ test('buildOutput: tree, lookup, unique ids, rollups equal site values', () => {
   const na = resolve({ ...index, p: [{ ...on, n: 'Not Applicable' }, ...index.p] }, { province: 'Not Applicable' });
   assert.ok(!na.opts.province.includes('Not Applicable'));
   assert.equal(na.sel.province, 'Ontario');
+  // Portal link place: the site's own city even when the city menu says All.
+  assert.deepEqual(r.place, { province: 'Ontario', city: on.c[1].n, site: 'Site B' });
+  assert.deepEqual(all.place, { province: 'Ontario', city: null, site: null });
+});
+
+test('dateFilter: stored values for the place, that one day', () => {
+  const keys = {
+    assay: ['RT-PCR [OBI:1]'],
+    province: new Map([['Ontario', ['Ontario [GAZ:1]']]]),
+    city: new Map([['Toronto', ['Toronto', 'Toronto [GAZ:2]']]]),
+    site: new Map(),
+  };
+  const f = dateFilter(keys, { province: 'Ontario', city: 'Toronto', site: null }, '2024-03-05');
+  assert.deepEqual(f.content.map((c) => c.content.value), [
+    ['RT-PCR [OBI:1]'], ['Ontario [GAZ:1]'], ['Toronto', 'Toronto [GAZ:2]'], Date.UTC(2024, 2, 5), Date.UTC(2024, 2, 6),
+  ]);
+  assert.equal(dateFilter(keys, { province: 'Ontario', city: null, site: 'Gone' }, '2024-03-05'), null);
 });
 
 test('viralSpec: empty, linear and symlog', () => {

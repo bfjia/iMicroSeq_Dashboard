@@ -1,7 +1,7 @@
 // Shared page helpers: panel states, Vega embedding, data tables, URL state, footer.
 // Vega, Vega-Lite and vegaEmbed are globals loaded from the CDN in each page.
 import { PALETTE, OTHER_COLOR, HELP_URL } from './config.js';
-import { fetchedAt } from './api.js';
+import { fetchedAt, portalUrl } from './api.js';
 
 const SCHEMA = 'https://vega.github.io/schema/vega-lite/v6.json';
 
@@ -26,8 +26,39 @@ export function colorScale(domain) {
   return { domain, range: domain.map((d) => (d === 'Other' ? OTHER_COLOR : PALETTE[i++ % PALETTE.length])) };
 }
 
-export function embed(el, spec) {
-  return window.vegaEmbed(el, { $schema: SCHEMA, config: VEGA_CONFIG, ...spec }, { actions: false });
+export async function embed(el, spec) {
+  const res = await window.vegaEmbed(el, { $schema: SCHEMA, config: VEGA_CONFIG, ...spec }, { actions: false });
+  linkClicks(res.view);
+  return res;
+}
+
+// ─── Links to the portal explorer ────────────────────────────────────────────
+
+// A chart row with `...linkTo(sqon)` links to those records in the portal explorer: clicking its mark
+// opens them in a new tab. Add LINK_TIP to the tooltip, and LINK_COL to the data table.
+// Charts that aggregate (sum) also need `detail: { field: 'link' }` so the link survives the aggregation.
+// No sqon: no link, and the tooltip shows "–" (a missing field would read "undefined").
+export const linkTo = (sqon, tip = 'Click to browse these samples ↗') => (sqon ? { link: portalUrl(sqon), linkTip: tip } : { linkTip: '–' });
+export const LINK_TIP = { field: 'linkTip', title: 'Data portal' };
+export const LINK_COL = { key: 'link', label: 'Data portal', link: true };
+
+let armed = null; // touch screens: the first tap shows the tooltip, a second tap on the same mark opens the link
+function linkClicks(view) {
+  // The "nearest point" layers (crosshair charts) answer with a voronoi cell wrapping the real mark.
+  const linkOf = (item) => (item?.isVoronoi ? item.datum : item)?.datum?.link;
+  view.addEventListener('click', (e, item) => {
+    const url = linkOf(item);
+    if (!url) return;
+    if (e.pointerType === 'touch' && armed !== url) {
+      armed = url;
+      return;
+    }
+    armed = null;
+    window.open(url, '_blank', 'noopener');
+  });
+  view.addEventListener('pointermove', (e, item) => {
+    e.target.style.cursor = linkOf(item) ? 'pointer' : '';
+  });
 }
 
 export const fmt = (n) => (n == null || !Number.isFinite(n) ? '–' : Number(n).toLocaleString('en-CA'));
@@ -123,7 +154,7 @@ export function dataTable(el, columns, rows, { open = false, title = 'Show data 
   btn.onclick = (e) => {
     e.preventDefault(); // don't open/close the table
     const today = new Date().toISOString().slice(0, 10);
-    download(`imicroseq-${file || el.id || 'data'}-${today}.csv`, toCsv(columns, rows));
+    download(`imicroseq-${file || el.id || 'data'}-${today}.csv`, toCsv(columns.filter((c) => !c.link), rows));
   };
   btn.hidden = true;
   sum.append(btn);
@@ -145,7 +176,16 @@ export function dataTable(el, columns, rows, { open = false, title = 'Show data 
       const tr = body.insertRow();
       columns.forEach((c) => {
         const v = r[c.key];
-        tr.insertCell().textContent = typeof v === 'number' ? fmt(v) : (v ?? '');
+        const td = tr.insertCell();
+        if (!c.link) td.textContent = typeof v === 'number' ? fmt(v) : (v ?? '');
+        else if (v) {
+          const a = document.createElement('a');
+          a.href = v;
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.textContent = 'Browse ↗';
+          td.append(a);
+        }
       });
     });
   });

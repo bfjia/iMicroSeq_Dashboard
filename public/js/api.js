@@ -1,5 +1,5 @@
 // GraphQL access. Proxy first (edge-cached, compressed), portal API directly if that fails.
-import { API_PROXY, API_DIRECT, DATE_FIELD } from './config.js';
+import { API_PROXY, API_DIRECT, DATE_FIELD, PORTAL_EXPLORER_URL } from './config.js';
 
 const memo = new Map(); // same query twice in one page view -> one request
 export let fetchedAt = null; // when the data was fetched upstream (shown in the footer)
@@ -39,13 +39,23 @@ export function gql(query, variables = {}) {
 
 // ─── SQON helpers (filters must always be groups) ────────────────────────────
 
-export const and = (...content) => ({ op: 'and', content: content.filter(Boolean) });
+// Nested 'and' groups are flattened, so portal explorer links show one plain list of filters.
+export const and = (...content) => ({ op: 'and', content: content.filter(Boolean).flatMap((c) => (c.op === 'and' ? c.content : [c])) });
 export const isIn = (field, values) => ({ op: 'in', content: { fieldName: `data.${field}`, value: values } });
 export const not = (...content) => ({ op: 'not', content });
 export const dateRange = (startMs, endMs) => and(
   { op: '>=', content: { fieldName: `data.${DATE_FIELD}`, value: startMs } },
   { op: '<', content: { fieldName: `data.${DATE_FIELD}`, value: endMs } },
 );
+
+// Date filter for a period key: 'YYYY' (that year) or 'YYYY-MM' (that month).
+export function periodRange(key) {
+  const [y, m] = key.split('-').map(Number);
+  return m ? dateRange(Date.UTC(y, m - 1, 1), Date.UTC(y, m, 1)) : dateRange(Date.UTC(y, 0, 1), Date.UTC(y + 1, 0, 1));
+}
+
+// Portal explorer page showing the records that match a SQON (same format as the API's).
+export const portalUrl = (sqon) => `${PORTAL_EXPLORER_URL}?filters=${encodeURIComponent(JSON.stringify(sqon))}`;
 
 // Calendar months [start, end) between two epoch-ms dates, as { key: 'YYYY-MM', start, end }.
 export function months(minMs, maxMs) {

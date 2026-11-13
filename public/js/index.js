@@ -1,9 +1,9 @@
 // At a Glance page. One live query feeds the hero cards, breakdown, map and cumulative
 // chart; the monthly-by-organism chart adds one more when it scrolls into view.
-import { gql, aliased, dateRange, months } from './api.js';
+import { gql, aliased, and, isIn, dateRange, periodRange, months } from './api.js';
 import { trimBrackets, isNull, parseCoord, monthKey } from './rules.js';
 import { DATE_FIELD, ACTIVE_DAYS, PALETTE } from './config.js';
-import { embed, panel, whenVisible, dataTable, colorScale, setFooter, SPINNER } from './charts.js';
+import { embed, panel, whenVisible, dataTable, colorScale, setFooter, linkTo, LINK_TIP, LINK_COL, SPINNER } from './charts.js';
 import { drawMap } from './map.js';
 
 const DAY = 86400000;
@@ -19,6 +19,7 @@ const INDEX_QUERY = `query($recent: JSON) { analysis {
     data__environmental_site { buckets { key doc_count } }
     data__${DATE_FIELD} { stats { min max } histogram(interval: ${DAY}) { buckets { key doc_count } } }
   }
+  recentHits: hits(filters: $recent, first: 0) { total }
   recent: aggregations(filters: $recent, aggregations_filter_themselves: true) {
     data__geo_loc_name_site { buckets(max: 5000) { key } }
   }
@@ -52,6 +53,7 @@ function loadIndex() {
       });
     return {
       total: a.hits.total,
+      recent: a.recentHits.total,
       sites,
       organisms: realCount(agg.data__organism.buckets),
       sources: realCount(agg.data__sample_collected_by_organisation_name.buckets),
@@ -81,7 +83,7 @@ function animateCount(el, target) {
   requestAnimationFrame(tick);
 }
 
-const HERO_IDS = ['hero-samples', 'hero-sites', 'hero-active', 'hero-organisms', 'hero-sources', 'hero-latest'];
+const HERO_IDS = ['hero-samples', 'hero-sites', 'hero-recent', 'hero-organisms', 'hero-sources', 'hero-latest'];
 
 async function hero() {
   const err = document.getElementById('hero-error');
@@ -92,7 +94,7 @@ async function hero() {
     const set = (id, v) => animateCount(document.getElementById(id), v);
     set('hero-samples', d.total);
     set('hero-sites', d.sites.length);
-    set('hero-active', d.sites.filter((s) => s.active).length);
+    set('hero-recent', d.recent);
     set('hero-organisms', d.organisms);
     set('hero-sources', d.sources);
     document.getElementById('hero-latest').textContent = new Date(d.maxDate).toLocaleDateString('en-CA', {
@@ -125,17 +127,24 @@ async function monthlyByOrganism(d) {
   );
   const rows = [];
   const totals = {};
+  const raw = {}; // organism -> stored values, for the portal links
   ms.forEach((m, i) => {
     for (const b of res[`m${i}`].data__organism.buckets) {
       const organism = b.key === '__missing__' ? 'Not recorded' : trimBrackets(b.key);
-      rows.push({ month: monthStart(m.key), organism, n: b.doc_count });
+      rows.push({ month: monthStart(m.key), key: m.key, organism, n: b.doc_count });
       totals[organism] = (totals[organism] || 0) + b.doc_count;
+      (raw[organism] ||= new Set()).add(b.key);
     }
   });
   // Biggest organisms keep their own colour; anything past the palette folds into "Other".
   const ranked = Object.keys(totals).sort((a, b) => totals[b] - totals[a]);
   const keep = new Set(ranked.slice(0, PALETTE.length - 1));
-  rows.forEach((r) => { if (!keep.has(r.organism)) r.organism = 'Other'; });
+  const keys = { Other: ranked.filter((o) => !keep.has(o)).flatMap((o) => [...raw[o]]) };
+  for (const o of keep) keys[o] = [...raw[o]];
+  rows.forEach((r) => {
+    if (!keep.has(r.organism)) r.organism = 'Other';
+    Object.assign(r, linkTo(and(periodRange(r.key), isIn('organism', keys[r.organism]))));
+  });
   const order = [...ranked.filter((o) => keep.has(o)), ...(ranked.length > keep.size ? ['Other'] : [])];
   return { rows, order };
 }
@@ -146,7 +155,7 @@ function cumulativeRows(d) {
   let total = 0;
   return [...byMonth.entries()].sort().map(([m, n]) => {
     total += n;
-    return { month: monthStart(m), n, total };
+    return { month: monthStart(m), n, total, ...linkTo(periodRange(m), "Click to browse that month's samples ↗") };
   });
 }
 
@@ -169,10 +178,12 @@ function monthlySpec({ rows, order }) {
         legend: { orient: 'bottom', columns: 1, title: null, labelLimit: 360 },
       },
       order: { field: 'rank', type: 'quantitative' },
+      detail: { field: 'link' }, // keeps the link through the sum
       tooltip: [
         { field: 'month', type: 'temporal', timeUnit: 'utcyearmonth', title: 'Month', format: '%B %Y' },
         { field: 'organism', title: 'Organism' },
         { aggregate: 'sum', field: 'n', type: 'quantitative', title: 'Samples', format: ',' },
+        LINK_TIP,
       ],
     },
     transform: [{ calculate: `indexof(${JSON.stringify(order)}, datum.organism)`, as: 'rank' }],
@@ -198,6 +209,7 @@ function cumulativeSpec(rows) {
             { field: 'month', type: 'temporal', timeUnit: 'utcyearmonth', title: 'Month', format: '%B %Y' },
             { field: 'n', type: 'quantitative', title: 'Samples that month', format: ',' },
             { field: 'total', type: 'quantitative', title: 'Total so far', format: ',' },
+            LINK_TIP,
           ],
         },
       },
@@ -220,14 +232,14 @@ function activity() {
       const m = await monthlyByOrganism(d);
       el.innerHTML = '';
       await embed(el, monthlySpec(m));
-      dataTable(table, [{ key: 'month', label: 'Month' }, { key: 'organism', label: 'Organism' }, { key: 'n', label: 'Samples' }],
+      dataTable(table, [{ key: 'month', label: 'Month' }, { key: 'organism', label: 'Organism' }, { key: 'n', label: 'Samples' }, LINK_COL],
         m.rows.map((r) => ({ ...r, month: r.month.slice(0, 7) })));
     } else {
       subtitle.textContent = 'Total samples collected up to each month';
       const rows = cumulativeRows(d);
       el.innerHTML = '';
       await embed(el, cumulativeSpec(rows));
-      dataTable(table, [{ key: 'month', label: 'Month' }, { key: 'n', label: 'Samples' }, { key: 'total', label: 'Cumulative' }],
+      dataTable(table, [{ key: 'month', label: 'Month' }, { key: 'n', label: 'Samples' }, { key: 'total', label: 'Cumulative' }, LINK_COL],
         rows.map((r) => ({ ...r, month: r.month.slice(0, 7) })));
     }
   });
@@ -247,16 +259,18 @@ function activity() {
 
 function breakdownRows(buckets) {
   const counts = {};
+  const raw = {}; // category -> stored values, for the portal links
   for (const b of buckets) {
     const k = (b.key === '__missing__' ? '' : trimBrackets(b.key)) || 'Unknown';
     counts[k] = (counts[k] || 0) + b.doc_count;
+    (raw[k] ||= []).push(b.key);
   }
   const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const top = ranked.slice(0, 8);
+  const top = ranked.slice(0, 8).map(([k, n]) => [k, n, raw[k]]);
   const other = ranked.slice(8).reduce((s, [, n]) => s + n, 0);
-  if (other) top.push(['Other', other]);
+  if (other) top.push(['Other', other, ranked.slice(8).flatMap(([k]) => raw[k])]);
   const total = ranked.reduce((s, [, n]) => s + n, 0);
-  return top.map(([category, value]) => ({ category, value, pct: value / total }));
+  return top.map(([category, value, keys]) => ({ category, value, pct: value / total, ...linkTo(and(isIn('environmental_site', keys))) }));
 }
 
 // One horizontal 100% bar: largest share first, "Other" (gray) last.
@@ -274,6 +288,7 @@ function breakdownSpec(rows, range) {
     { field: 'category', title: 'Environmental site' },
     { field: 'value', type: 'quantitative', title: 'Samples', format: ',' },
     { field: 'pct', type: 'quantitative', title: 'Share', format: '.1%' },
+    LINK_TIP,
   ];
   const x = { field: 'start', type: 'quantitative', title: null, scale: { domain: [0, 1] }, axis: { format: '%', grid: false, tickCount: 5 } };
   return {
@@ -321,7 +336,7 @@ function breakdown() {
     await embed(el, breakdownSpec(rows, range));
     el.append(breakdownLegend(rows, range));
     dataTable(document.getElementById('breakdown-table'),
-      [{ key: 'category', label: 'Environmental site' }, { key: 'value', label: 'Samples' }],
+      [{ key: 'category', label: 'Environmental site' }, { key: 'value', label: 'Samples' }, LINK_COL],
       rows);
   });
 }

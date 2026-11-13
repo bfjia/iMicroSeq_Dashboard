@@ -1,11 +1,13 @@
 // Interactive Dashboard page: sample explorer (live) and viral loads (nightly files, js/viral.js).
 // Data quality checks are their own page (qa.html, js/qa.js), linked from the footer.
-import { gql, aliased, isIn, dateRange, years, months } from './api.js';
+import { gql, aliased, and, isIn, dateRange, periodRange, years, months } from './api.js';
 import { trimBrackets, monthKey } from './rules.js';
 import {
   DATE_FIELD, EXPLORER_FIELDS, EXPLORER_DEFAULT_X, EXPLORER_DEFAULT_SEGMENT, EXPLORER_TOP_N, PALETTE,
 } from './config.js';
-import { embed, panel, whenVisible, dataTable, colorScale, getParam, setParams, setFooter } from './charts.js';
+import {
+  embed, panel, whenVisible, dataTable, colorScale, getParam, setParams, setFooter, linkTo, LINK_TIP, LINK_COL,
+} from './charts.js';
 import { initViral } from './viral.js';
 
 const DAY = 86400000;
@@ -129,6 +131,24 @@ function shape(rows, x, seg) {
   return { rows: out, order, xOrder };
 }
 
+// Portal link per bar segment: the x value and the segment value (a period, every stored spelling
+// of a value, or "Other": the values not shown on their own). Time "Other" (scattered periods) gets none.
+function addLinks({ rows, order, xOrder }, x, seg, dim) {
+  const one = x === seg || (isTime(x) && isTime(seg));
+  const filter = (f, v, shown) => {
+    if (isTime(f)) return v === 'Other' ? undefined : periodRange(v.slice(0, f === 'Year' ? 4 : 7));
+    const vals = dim.dims[f];
+    if (v === 'Other') return isIn(f, vals.filter((d) => !shown.includes(d.label)).flatMap((d) => d.raw));
+    const hit = vals.find((d) => d.label === v);
+    return hit ? isIn(f, hit.raw) : undefined;
+  };
+  for (const r of rows) {
+    const fx = filter(x, r.x, xOrder);
+    const fs = one ? null : filter(seg, r.seg, order);
+    Object.assign(r, linkTo(fx !== undefined && fs !== undefined ? and(fx, fs) : null));
+  }
+}
+
 // Tiny segments (e.g. 50 samples next to 200k) would be thinner than the white gap between
 // segments and show no colour. Draw each at least this share of the tallest bar (or of its own
 // bar in Percent): ~3 px. Tooltips and the data table keep the true counts.
@@ -165,10 +185,12 @@ function explorerSpec({ rows, order, xOrder }, x, seg, pct, narrow) {
         : { field: 'seg', type: 'nominal', sort: order, scale: colorScale(order), legend: { title: label(seg), orient: narrow ? 'bottom' : 'right', columns: narrow ? 1 : undefined, labelLimit: 360 } },
       order: { field: 'rank', type: 'quantitative' },
       description: { field: 'desc' },
+      detail: { field: 'link' }, // keeps the link through the sum
       tooltip: [
         time ? { field: 'x', type: 'temporal', timeUnit: unit, title: label(x), format: x === 'Year' ? '%Y' : '%B %Y' } : { field: 'x', title: label(x) },
         ...(single ? [] : [{ field: 'seg', title: label(seg) }]),
         { aggregate: 'sum', field: 'n', type: 'quantitative', title: 'Samples', format: ',' },
+        LINK_TIP,
       ],
     },
   };
@@ -200,9 +222,10 @@ function explorer() {
     return panel(chart, async () => {
       const dim = await loadDimensions();
       const shaped = shape(await crossTab(x, seg, dim), x, seg);
+      addLinks(shaped, x, seg, dim);
       chart.innerHTML = '';
       await embed(chart, explorerSpec(shaped, x, seg, pct, chart.clientWidth < 700));
-      dataTable(table, [{ key: 'x', label: label(x) }, { key: 'seg', label: label(seg) }, { key: 'n', label: 'Samples' }],
+      dataTable(table, [{ key: 'x', label: label(x) }, { key: 'seg', label: label(seg) }, { key: 'n', label: 'Samples' }, LINK_COL],
         shaped.rows.map((r) => ({ ...r, x: isTime(x) ? r.x.slice(0, x === 'Year' ? 4 : 7) : r.x })));
     });
   };

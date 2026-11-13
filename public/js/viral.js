@@ -1,9 +1,12 @@
 // Viral loads (RT-PCR): mean per date ± SEM, LOESS trend, optional PMMoV normalisation.
 // Data comes from the nightly build in public/data/viral/ (scripts/build-viral-loads.mjs).
 // Browser globals are only touched inside functions, so the pure helpers import fine in Node.
-import { SARS2, PMMOV, LOESS_SPAN, LOESS_SPAN_MIN, LOESS_SPAN_MAX } from './config.js';
-import { meanSem, mergeStat } from './rules.js';
-import { embed, colorScale, panel, failed, dataTable, getParam, setParams } from './charts.js';
+import { SARS2, PMMOV, LOESS_SPAN, LOESS_SPAN_MIN, LOESS_SPAN_MAX, VIRAL_ASSAY } from './config.js';
+import { meanSem, mergeStat, trimBrackets } from './rules.js';
+import { gql, and, isIn, dateRange } from './api.js';
+import {
+  embed, colorScale, panel, failed, dataTable, getParam, setParams, linkTo, LINK_TIP, LINK_COL,
+} from './charts.js';
 
 const BASE = 'data/viral/';
 const ALL = 'All';
@@ -202,7 +205,47 @@ export function resolve(idx, want) {
     opts: { province: provs.map((p) => p.n), city: cityNames, site: siteOpts, organism: organisms, gene: genes, unit: units },
     file,
     single: !!siteNode,
+    place: { province: prov.n, city: siteNode ? siteNode.city : cityNode?.n ?? null, site: siteNode?.n ?? null }, // for portal links
   };
+}
+
+// ─── Portal links ────────────────────────────────────────────────────────────
+
+const DAY = 86400000;
+const PLACE_FIELDS = { province: 'geo_loc_name_state_province_territory', city: 'geo_loc_name_city', site: 'geo_loc_name_site' };
+
+// Names in the viral files have no [ontology id], but the portal filters on stored values.
+// One live query -> { assay: [RT-PCR keys], province|city|site: Map(name -> [stored values]) }.
+function portalKeys() {
+  const fields = ['assay_type', ...Object.values(PLACE_FIELDS)];
+  return gql(`{ analysis { aggregations { ${fields.map((f) => `data__${f} { buckets(max: 5000) { key } }`).join(' ')} } } }`)
+    .then(({ analysis: { aggregations: a } }) => {
+      const out = {
+        assay: a.data__assay_type.buckets.map((b) => b.key).filter((k) => trimBrackets(k).toLowerCase() === VIRAL_ASSAY.toLowerCase()),
+      };
+      for (const [k, f] of Object.entries(PLACE_FIELDS)) {
+        const m = new Map();
+        for (const { key } of a[`data__${f}`].buckets) {
+          const n = (key === '__missing__' ? '' : trimBrackets(key)) || BLANK; // same naming as the build
+          m.set(n, [...(m.get(n) || []), key]);
+        }
+        out[k] = m;
+      }
+      return out;
+    });
+}
+
+// Filter for one chart date: RT-PCR records at that place, collected that day. null if a name isn't in the portal.
+export function dateFilter(keys, place, date) {
+  const parts = [isIn('assay_type', keys.assay)];
+  for (const k of ['province', 'city', 'site']) {
+    if (!place[k]) continue;
+    const v = keys[k].get(place[k]);
+    if (!v) return null;
+    parts.push(isIn(PLACE_FIELDS[k], v));
+  }
+  const t = Date.parse(`${date}T00:00:00Z`);
+  return and(...parts, dateRange(t, t + DAY));
 }
 
 // ─── Chart spec ──────────────────────────────────────────────────────────────
@@ -238,6 +281,7 @@ export function viralSpec(rows, { unit, yTitle, showLine, log, single, norm, nar
         { field: 'sem', type: 'quantitative', title: 'SEM', format: num },
       ]),
     { field: 'valueSmooth', type: 'quantitative', title: TREND, format: num },
+    ...(rows.some((r) => r.link) ? [LINK_TIP] : []),
   ];
   return {
     description: 'Viral load by date: mean with ±SEM error bars and a LOESS trend line',
@@ -368,6 +412,7 @@ export function initViral(rootEl) {
   let view = null;
   let seq = 0;
   let shownDates = []; // dates of the series on screen (for the presets)
+  const linkKeys = portalKeys().catch((err) => { console.error(err); return null; }); // null: chart without links
   // Wanted selections (resolved against the index on every update) and options.
   const st = { province: null, city: null, site: null, organism: null, gene: null, unit: null, from: null, to: null, norm: false, log: false, span: null };
 
@@ -400,8 +445,9 @@ export function initViral(rootEl) {
 
     chartEl.classList.add('viral-busy');
     let file;
+    let keys;
     try {
-      file = await getFile(r.file);
+      [file, keys] = await Promise.all([getFile(r.file), linkKeys]);
     } catch (err) {
       if (token === seq) failed(chartEl, err, update);
       return;
@@ -431,7 +477,13 @@ export function initViral(rootEl) {
     const span = st.span ?? LOESS_SPAN;
     $('viral-span').value = span;
     $('viral-span-shown').textContent = span;
-    const rows = withTrend(visible, $('viral-loess-full-series').checked ? series : visible, span);
+    const links = new Map(); // date -> portal link
+    for (const d of keys ? visible : []) {
+      const f = dateFilter(keys, r.place, d.date);
+      if (f) links.set(d.date, linkTo(f, "Click to browse this date's RT-PCR samples (all organisms) ↗"));
+    }
+    const rows = withTrend(visible, $('viral-loess-full-series').checked ? series : visible, span)
+      .map((d) => ({ ...d, ...(links.get(d.date) ?? linkTo(null)) }));
     const unitLabel = label(unit);
     const spec = viralSpec(rows, {
       unit: unitLabel,
@@ -456,8 +508,8 @@ export function initViral(rootEl) {
     const sig = (v) => (Number.isFinite(v) ? String(Number(v.toPrecision(4))) : '');
     dataTable($('viral-table'),
       [{ key: 'date', label: 'Date' }, { key: 'unit', label: norm ? `Unit (/ PMMoV)` : 'Unit' },
-        { key: 'mean', label: 'Mean' }, { key: 'n', label: 'n' }, { key: 'sem', label: 'SEM' }],
-      visible.map((d) => ({ date: d.date, unit: unitLabel, mean: sig(d.value), n: d.n, sem: sig(d.sem) })));
+        { key: 'mean', label: 'Mean' }, { key: 'n', label: 'n' }, { key: 'sem', label: 'SEM' }, LINK_COL],
+      visible.map((d) => ({ date: d.date, unit: unitLabel, mean: sig(d.value), n: d.n, sem: sig(d.sem), link: links.get(d.date)?.link })));
 
     const custom = st.from || st.to;
     setParams({
