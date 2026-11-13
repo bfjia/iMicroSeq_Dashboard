@@ -319,18 +319,31 @@ test('buildOutput: tree, lookup, unique ids, rollups equal site values', () => {
   assert.deepEqual(all.place, { province: 'Ontario', city: null, site: null });
 });
 
-test('dateFilter: stored values for the place, that one day', () => {
+test('dateFilter: stored values for the place and target, that one day', () => {
   const keys = {
     assay: ['RT-PCR [OBI:1]'],
     province: new Map([['Ontario', ['Ontario [GAZ:1]']]]),
     city: new Map([['Toronto', ['Toronto', 'Toronto [GAZ:2]']]]),
     site: new Map(),
+    organism: new Map([[SARS2, [SARS2, '__missing__']]]),
+    gene: new Map([['N1', ['N1']]]),
+    unit: new Map([['u', ['u [UO:1]']]]),
   };
-  const f = dateFilter(keys, { province: 'Ontario', city: 'Toronto', site: null }, '2024-03-05');
-  assert.deepEqual(f.content.map((c) => c.content.value), [
-    ['RT-PCR [OBI:1]'], ['Ontario [GAZ:1]'], ['Toronto', 'Toronto [GAZ:2]'], Date.UTC(2024, 2, 5), Date.UTC(2024, 2, 6),
+  const place = { province: 'Ontario', city: 'Toronto', site: null };
+  const f = dateFilter(keys, place, { organism: SARS2, gene: 'N1', unit: 'u' }, '2024-03-05');
+  const [assay, prov, city, slots, from, to] = f.content;
+  assert.deepEqual([assay, prov, city].map((c) => c.content.value), [['RT-PCR [OBI:1]'], ['Ontario [GAZ:1]'], ['Toronto', 'Toronto [GAZ:2]']]);
+  // One of the 3 target slots matches organism, gene and unit together.
+  assert.equal(slots.op, 'or');
+  assert.deepEqual(slots.content[2].content.map((c) => [c.content.fieldName, c.content.value]), [
+    ['data.target_taxonomic_name_3', [SARS2, '__missing__']], ['data.gene_symbol_3', ['N1']], ['data.diagnostic_measurement_unit_3', ['u [UO:1]']],
   ]);
-  assert.equal(dateFilter(keys, { province: 'Ontario', city: null, site: 'Gone' }, '2024-03-05'), null);
+  assert.deepEqual([from, to].map((c) => c.content.value), [Date.UTC(2024, 2, 5), Date.UTC(2024, 2, 6)]);
+  // Gene "All": no gene condition.
+  const all = dateFilter(keys, place, { organism: SARS2, gene: null, unit: 'u' }, '2024-03-05');
+  assert.equal(all.content[3].content[0].content.length, 2);
+  assert.equal(dateFilter(keys, { province: 'Ontario', city: null, site: 'Gone' }, { organism: SARS2, unit: 'u' }, '2024-03-05'), null);
+  assert.equal(dateFilter(keys, place, { organism: 'Other virus', unit: 'u' }, '2024-03-05'), null);
 });
 
 test('viralSpec: empty, linear and symlog', () => {

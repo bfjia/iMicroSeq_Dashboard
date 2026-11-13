@@ -82,7 +82,7 @@ Proof of concept for demonstration only. Not for scientific interpretation. Chec
 
 **Share a view.** Set the controls, copy the browser address.
 
-**See the records behind a number.** Click a bar or point (tap twice on a phone) to open those samples in the data portal in a new tab. Data tables have a "Data portal" column with the same links. Viral load points open every RT-PCR sample at that place on that date, all organisms.
+**See the records behind a number.** Click a bar or point (tap twice on a phone) to open those samples in the data portal in a new tab. Data tables have a "Data portal" column with the same links. Viral load points open the RT-PCR samples at that place on that date with the organism, gene and unit chosen.
 
 | Panel | Shows and controls | Notes |
 |---|---|---|

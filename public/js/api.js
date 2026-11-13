@@ -43,6 +43,7 @@ export function gql(query, variables = {}) {
 export const and = (...content) => ({ op: 'and', content: content.filter(Boolean).flatMap((c) => (c.op === 'and' ? c.content : [c])) });
 export const isIn = (field, values) => ({ op: 'in', content: { fieldName: `data.${field}`, value: values } });
 export const not = (...content) => ({ op: 'not', content });
+export const or = (...content) => ({ op: 'or', content: content.filter(Boolean) });
 export const dateRange = (startMs, endMs) => and(
   { op: '>=', content: { fieldName: `data.${DATE_FIELD}`, value: startMs } },
   { op: '<', content: { fieldName: `data.${DATE_FIELD}`, value: endMs } },
