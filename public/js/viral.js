@@ -2,8 +2,8 @@
 // Data comes from the nightly build in public/data/viral/ (scripts/build-viral-loads.mjs).
 // Browser globals are only touched inside functions, so the pure helpers import fine in Node.
 import { SARS2, PMMOV, LOESS_SPAN, LOESS_SPAN_MIN, LOESS_SPAN_MAX, VIRAL_ASSAY } from './config.js';
-import { meanSem, mergeStat, trimBrackets } from './rules.js';
-import { gql, and, isIn, dateRange } from './api.js';
+import { meanSem, mergeStat, trimBrackets, viralOrganism } from './rules.js';
+import { gql, and, or, isIn, dateRange } from './api.js';
 import {
   embed, colorScale, panel, failed, dataTable, getParam, setParams, linkTo, LINK_TIP, LINK_COL,
 } from './charts.js';
@@ -213,30 +213,38 @@ export function resolve(idx, want) {
 
 const DAY = 86400000;
 const PLACE_FIELDS = { province: 'geo_loc_name_state_province_territory', city: 'geo_loc_name_city', site: 'geo_loc_name_site' };
+// A record holds up to 3 targets: field prefix + slot number.
+const TARGET_FIELDS = { organism: 'target_taxonomic_name_', gene: 'gene_symbol_', unit: 'diagnostic_measurement_unit_' };
+const SLOTS = [1, 2, 3];
 
 // Names in the viral files have no [ontology id], but the portal filters on stored values.
-// One live query -> { assay: [RT-PCR keys], province|city|site: Map(name -> [stored values]) }.
+// One live query -> { assay: [RT-PCR keys], province|city|site|organism|gene|unit: Map(name -> [stored values]) }.
+// Target maps cover all 3 slots. Names are made as the build makes them (blank organism = SARS-CoV-2).
 function portalKeys() {
-  const fields = ['assay_type', ...Object.values(PLACE_FIELDS)];
+  const targets = Object.entries(TARGET_FIELDS).flatMap(([k, p]) => SLOTS.map((i) => [k, p + i]));
+  const fields = ['assay_type', ...Object.values(PLACE_FIELDS), ...targets.map(([, f]) => f)];
   return gql(`{ analysis { aggregations { ${fields.map((f) => `data__${f} { buckets(max: 5000) { key } }`).join(' ')} } } }`)
     .then(({ analysis: { aggregations: a } }) => {
       const out = {
         assay: a.data__assay_type.buckets.map((b) => b.key).filter((k) => trimBrackets(k).toLowerCase() === VIRAL_ASSAY.toLowerCase()),
       };
-      for (const [k, f] of Object.entries(PLACE_FIELDS)) {
-        const m = new Map();
+      const add = (k, f, nameOf) => {
+        const m = (out[k] ||= new Map());
         for (const { key } of a[`data__${f}`].buckets) {
-          const n = (key === '__missing__' ? '' : trimBrackets(key)) || BLANK; // same naming as the build
-          m.set(n, [...(m.get(n) || []), key]);
+          const n = nameOf(key);
+          if (!m.get(n)?.includes(key)) m.set(n, [...(m.get(n) || []), key]);
         }
-        out[k] = m;
-      }
+      };
+      const name = (key) => (key === '__missing__' ? '' : trimBrackets(key)) || BLANK;
+      for (const [k, f] of Object.entries(PLACE_FIELDS)) add(k, f, name);
+      for (const [k, f] of targets) add(k, f, k === 'organism' ? viralOrganism : name);
       return out;
     });
 }
 
-// Filter for one chart date: RT-PCR records at that place, collected that day. null if a name isn't in the portal.
-export function dateFilter(keys, place, date) {
+// Filter for one chart date: RT-PCR records at that place, collected that day, with one target slot matching
+// the organism, gene (null = all genes) and unit chosen. null if a name isn't in the portal.
+export function dateFilter(keys, place, target, date) {
   const parts = [isIn('assay_type', keys.assay)];
   for (const k of ['province', 'city', 'site']) {
     if (!place[k]) continue;
@@ -244,8 +252,15 @@ export function dateFilter(keys, place, date) {
     if (!v) return null;
     parts.push(isIn(PLACE_FIELDS[k], v));
   }
+  const want = {};
+  for (const k of ['organism', 'gene', 'unit']) {
+    if (target[k] == null) continue;
+    want[k] = keys[k].get(target[k]);
+    if (!want[k]) return null;
+  }
+  const slot = (i) => and(...Object.keys(want).map((k) => isIn(TARGET_FIELDS[k] + i, want[k])));
   const t = Date.parse(`${date}T00:00:00Z`);
-  return and(...parts, dateRange(t, t + DAY));
+  return and(...parts, or(...SLOTS.map(slot)), dateRange(t, t + DAY));
 }
 
 // ─── Chart spec ──────────────────────────────────────────────────────────────
@@ -479,8 +494,8 @@ export function initViral(rootEl) {
     $('viral-span-shown').textContent = span;
     const links = new Map(); // date -> portal link
     for (const d of keys ? visible : []) {
-      const f = dateFilter(keys, r.place, d.date);
-      if (f) links.set(d.date, linkTo(f, "Click to browse this date's RT-PCR samples (all organisms) ↗"));
+      const f = dateFilter(keys, r.place, { organism, gene: gene === ALL ? null : gene, unit }, d.date);
+      if (f) links.set(d.date, linkTo(f, "Click to browse this date's samples ↗"));
     }
     const rows = withTrend(visible, $('viral-loess-full-series').checked ? series : visible, span)
       .map((d) => ({ ...d, ...(links.get(d.date) ?? linkTo(null)) }));
