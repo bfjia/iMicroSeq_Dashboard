@@ -25,6 +25,11 @@ body {
   text-align: left;
 }
 
+/* Leaflet layers use z-index 400+: keep them inside the map so they never cover the sticky header */
+.leaflet-container {
+  isolation: isolate;
+}
+
 /* Logo area: dark blue with radial gradients; contains clipped white panel */
 .header-logo-area {
   position: relative;

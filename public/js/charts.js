@@ -42,17 +42,34 @@ export const linkTo = (sqon, tip = 'Click to browse these samples ↗') => (sqon
 export const LINK_TIP = { field: 'linkTip', title: 'Data portal' };
 export const LINK_COL = { key: 'link', label: 'Data portal', link: true };
 
-let armed = null; // touch screens: the first tap shows the tooltip, a second tap on the same mark opens the link
+// Touch screens: a tap ends with "pointer left", which hides Vega's tooltip straight away, and scrolling
+// never hides it. So on touch the tap shows the tooltip itself, and scrolling or tapping elsewhere hides it.
+let armed = null; // touch: the first tap shows the tooltip, a second tap on the same mark opens the link
+const hideTips = () => {
+  armed = null;
+  document.querySelectorAll('.vg-tooltip.visible').forEach((el) => el.classList.remove('visible'));
+};
+if (typeof window !== 'undefined') { // not in Node (tests import this file)
+  addEventListener('scroll', hideTips, { passive: true, capture: true });
+  addEventListener('touchstart', (e) => { if (!e.target.closest?.('.vega-embed')) hideTips(); }, { passive: true });
+}
+
 function linkClicks(view) {
   // The "nearest point" layers (crosshair charts) answer with a voronoi cell wrapping the real mark.
   const linkOf = (item) => (item?.isVoronoi ? item.datum : item)?.datum?.link;
+  let touch = false; // from pointerdown: older iOS Safari leaves pointerType off the click event
+  view.addEventListener('pointerdown', (e) => { touch = e.pointerType === 'touch'; });
   view.addEventListener('click', (e, item) => {
     const url = linkOf(item);
-    if (!url) return;
-    if (e.pointerType === 'touch' && armed !== url) {
-      armed = url;
-      return;
+    if (touch) {
+      if (!item?.tooltip) return hideTips();
+      if (!url || armed !== url) {
+        view.tooltip()?.(null, e, item, item.tooltip); // shown after Vega's own hide
+        armed = url || null;
+        return;
+      }
     }
+    if (!url) return;
     armed = null;
     window.open(url, '_blank', 'noopener');
   });
