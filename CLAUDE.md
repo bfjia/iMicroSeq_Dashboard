@@ -17,7 +17,7 @@ Proof-of-concept dashboard for the [Canadian iMicroSeq Data Portal](https://imic
 | `cf-worker/index.ts` | Worker: `POST /api/graphql` cached proxy, `/tiles/...` CARTO proxy, nightly cron that calls `DEPLOY_HOOK_URL`; all else static |
 | `public/js/config.js` | Every tunable (fields, labels, colours, thresholds, API URLs) |
 | `public/js/rules.js` | Data rules shared by browser and nightly build |
-| `public/js/api.js` | `gql()` (proxy, then direct fallback), SQON helpers, `aliased()` multi-block queries |
+| `public/js/api.js` | `gql()` (proxy, then direct fallback), SQON helpers, `aliased()`/`aliasedMany()` multi-block queries, `fieldList()` |
 | `public/js/charts.js` | Vega-Lite config, panel loading/error states, data tables, URL state, footer |
 | `public/js/index.js`, `public/js/map.js` | At a Glance page |
 | `public/js/dashboard.js`, `public/js/viral.js` | Interactive Dashboard page |
