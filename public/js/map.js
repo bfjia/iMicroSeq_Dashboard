@@ -1,7 +1,7 @@
 // Coverage map: Leaflet (loaded only when needed), Canada outline, one marker per location.
-import { ACTIVE_COLOR, HISTORICAL_COLOR, ACTIVE_DAYS, MAP_VIRAL_MIN_SAMPLES, PORTAL_EXPLORER_URL } from './config.js';
+import { ACTIVE_COLOR, HISTORICAL_COLOR, ACTIVE_DAYS, MAP_VIRAL_MIN_SAMPLES } from './config.js';
 import { fmt } from './charts.js';
-import { and, isIn } from './api.js';
+import { and, isIn, portalUrl } from './api.js';
 
 const LEAFLET = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet';
 
@@ -87,7 +87,7 @@ export async function drawMap(el, sites) {
     }).addTo(map);
     const line = (s) => `<strong>${escapeHtml(s.name)}</strong><br>${fmt(s.count)} samples · ${s.active ? 'Active' : 'Historical'}`;
     const viral = (s) => `dashboard.html?site=${encodeURIComponent(s.name)}#viral`;
-    const portal = (s) => `${PORTAL_EXPLORER_URL}?filters=${encodeURIComponent(JSON.stringify(and(isIn('geo_loc_name_site', [s.key]))))}`;
+    const portal = (s) => portalUrl(and(isIn('geo_loc_name_site', [s.key])));
     const links = (s) => (s.count >= MAP_VIRAL_MIN_SAMPLES ? `<br><a href="${viral(s)}">Visualize this site's viral load</a>` : '') +
       `<br><a href="${portal(s)}" target="_blank" rel="noopener">Browse this site's data on the portal ↗</a>`;
     const many = p.sites.length > 1;

@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import {
   trimBrackets, isNull, parseCoord, viralOrganism, viralValue, addStat, mergeStat, meanSem, dayKey, monthKey, slug, valuePattern,
 } from '../public/js/rules.js';
-import { months, years } from '../public/js/api.js';
-import { SARS2 } from '../public/js/config.js';
+import { months, years, and, isIn, not, periodRange, portalUrl } from '../public/js/api.js';
+import { linkTo } from '../public/js/charts.js';
+import { SARS2, PORTAL_EXPLORER_URL } from '../public/js/config.js';
 
 test('trimBrackets', () => {
   assert.equal(trimBrackets('Alberta [GAZ:00002566]'), 'Alberta');
@@ -75,4 +76,23 @@ test('date keys and periods', () => {
 test('slug', () => {
   assert.equal(slug('Peterborough: Peterborough Wastewater Treatment Plant'), 'peterborough-peterborough-wastewater-treatment-plant');
   assert.equal(slug(''), 'blank');
+});
+
+test('SQON helpers and portal links', () => {
+  const a = isIn('organism', ['x']);
+  const b = not(isIn('organism', ['__missing__']));
+  // Nested groups flatten; empty parts drop out.
+  assert.deepEqual(and(and(a), null, and(b, periodRange('2024-01'))), {
+    op: 'and',
+    content: [a, b,
+      { op: '>=', content: { fieldName: 'data.sample_collection_start_date', value: Date.UTC(2024, 0, 1) } },
+      { op: '<', content: { fieldName: 'data.sample_collection_start_date', value: Date.UTC(2024, 1, 1) } }],
+  });
+  assert.deepEqual(periodRange('2024').content.map((c) => c.content.value), [Date.UTC(2024, 0, 1), Date.UTC(2025, 0, 1)]);
+  assert.deepEqual(periodRange('2024-12').content.map((c) => c.content.value), [Date.UTC(2024, 11, 1), Date.UTC(2025, 0, 1)]);
+  const url = portalUrl(and(a));
+  assert.ok(url.startsWith(`${PORTAL_EXPLORER_URL}?filters=`));
+  assert.deepEqual(JSON.parse(decodeURIComponent(url.split('?filters=')[1])), and(a));
+  assert.deepEqual(linkTo(null), { linkTip: '–' }); // no link: no "undefined" in the tooltip
+  assert.equal(linkTo(and(a)).link, url);
 });

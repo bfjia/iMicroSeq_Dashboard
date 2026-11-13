@@ -82,9 +82,11 @@ Proof of concept for demonstration only. Not for scientific interpretation. Chec
 
 **Share a view.** Set the controls, copy the browser address.
 
+**See the records behind a number.** Click a bar or point (tap twice on a phone) to open those samples in the data portal in a new tab. Data tables have a "Data portal" column with the same links. Viral load points open every RT-PCR sample at that place on that date, all organisms.
+
 | Panel | Shows and controls | Notes |
 |---|---|---|
-| Hero cards (At a Glance) | Samples, sites, active sites (last 12 months), organisms, data sources, latest sample | "Not Provided", "Not Applicable" and blank are not counted. |
+| Hero cards (At a Glance) | Samples, sites, recent samples (collected in the last 12 months), organisms, data sources, latest sample | "Not Provided", "Not Applicable" and blank are not counted. |
 | Sample Coverage | One circle per location (sites at the same spot share one), size = samples, blue = active, light blue = historical. Hover for details, click for links: viral loads (sites with 10+ samples) and the site's records on the data portal | Sites without GPS sit at their province capital. Samples with no site are not shown. Click the map once to enable scroll zoom. |
 | Environmental Sites | One bar split by site type, share in the legend | Top 8 plus "Other". |
 | Samples Captured Over Time | Total samples to date (Cumulative, the default) or samples per month by organism (Monthly) | Monthly: up to 7 organisms coloured, rest "Other" (gray). |
