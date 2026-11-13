@@ -80,3 +80,19 @@ export function aliased(list, inner) {
   const vars = Object.fromEntries(list.map((a) => [a.alias, a.sqon]));
   return gql(`query(${decl}) { analysis { ${body} } }`, vars).then((d) => d.analysis);
 }
+
+// Same, split into requests of `size` blocks so each body stays under the proxy's 64 KB limit.
+export async function aliasedMany(list, inner, size = 80) {
+  const parts = [];
+  for (let i = 0; i < list.length; i += size) parts.push(aliased(list.slice(i, i + size), inner));
+  return Object.assign({}, ...(await Promise.all(parts)));
+}
+
+// Every portal field: { field: { name, type: 'keyword' | 'long' | 'date' | ..., isArray } }.
+export function fieldList() {
+  return gql('{ analysis { configs { extended } } }').then((d) => Object.fromEntries(
+    d.analysis.configs.extended
+      .filter((f) => f.fieldName.startsWith('data.') && ['keyword', 'long', 'date', 'integer', 'float', 'double'].includes(f.type))
+      .map((f) => [f.fieldName.slice(5), { name: f.displayName, type: f.type, isArray: f.isArray }]),
+  ));
+}

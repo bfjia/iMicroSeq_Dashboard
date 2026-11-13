@@ -77,6 +77,32 @@ export const QA_NAME_FIELDS = {
   diagnostic_measurement_unit_1: 'Measurement unit (target 1)',
 };
 
+// QA: "Group by" choices (completeness by group, latest sample by group).
+export const QA_GROUP_FIELDS = {
+  sample_collected_by_organisation_name: 'Collecting organisation',
+  geo_loc_name_state_province_territory: 'Province/Territory',
+  organism: 'Organism',
+  assay_type: 'Assay type',
+  purpose_of_sampling: 'Purpose of sampling',
+  environmental_site: 'Environmental site',
+  environmental_material: 'Environmental material',
+  collection_device: 'Collection device',
+  collection_method: 'Collection method',
+};
+// QA: the page-wide "Only this ..." filter at the top of the QA page applies to every live report.
+export const QA_FILTER_FIELD = 'sample_collected_by_organisation_name';
+// QA: largest groups shown in "by group" charts (the rest are listed as left out).
+export const QA_MAX_GROUPS = 60;
+// QA: field picked first in each report's dropdowns (any portal field name works).
+export const QA_DEFAULTS = {
+  profile: 'geo_loc_latitude',
+  groupField: '', // '' = all key fields (COMPLETENESS_FIELDS) as a heatmap
+  group: 'sample_collected_by_organisation_name',
+  timeField: 'diagnostic_measurement_unit_1',
+  each: 'geo_loc_name_site',
+  one: 'geo_loc_name_state_province_territory',
+};
+
 // Values that mean "no real value" (compared after removing the [ontology id]).
 export const NULL_TERMS = [
   '__missing__',
@@ -104,7 +130,7 @@ export const OTHER_COLOR = '#B8BEC9';
 // Map markers: active sites in brand blue, historical in a lighter shade of it.
 export const ACTIVE_COLOR = '#4A63E7';
 export const HISTORICAL_COLOR = '#A9B7F4';
-// Map: sites with fewer samples than this get no "see viral loads" link or click-through.
+// Map: sites with fewer samples than this get no "Visualize this site's viral load" link.
 export const MAP_VIRAL_MIN_SAMPLES = 10;
 // Map: every site also links to its records in the portal explorer (?filters=<SQON>).
 export const PORTAL_EXPLORER_URL = 'https://imicroseq-dataportal.ca/explorer/environmental';

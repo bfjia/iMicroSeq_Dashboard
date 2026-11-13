@@ -909,6 +909,39 @@ a {
   min-height: 60px;
 }
 
+.qa-controls {
+  margin-bottom: 1rem;
+}
+
+.qa-controls select {
+  max-width: 340px;
+}
+
+/* Page-wide filter bar: sticks under the site header (top set in qa.js) */
+.qa-filter {
+  position: sticky;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  max-width: 980px;
+  margin: 0 auto 2rem;
+  padding: 0.6rem 1rem;
+  box-sizing: border-box;
+  background: #e8ebf3;
+  border: 1px solid #d7deef;
+  border-radius: 12px;
+}
+
+/* Filter active: brand-blue tint (orange means "problem" on this page) */
+.qa-filter-on {
+  background: #e3e8fc;
+  border-color: #4a63e7;
+}
+
+.qa-filter select {
+  max-width: 420px;
+}
+
 .qa-note {
   margin-top: 0.5rem;
 }

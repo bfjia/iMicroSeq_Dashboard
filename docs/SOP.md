@@ -89,7 +89,7 @@ Proof of concept for demonstration only. Not for scientific interpretation. Chec
 | Environmental Sites | One bar split by site type, share in the legend | Top 8 plus "Other". |
 | Samples Captured Over Time | Total samples to date (Cumulative, the default) or samples per month by organism (Monthly) | Monthly: up to 7 organisms coloured, rest "Other" (gray). |
 | Sample breakdown | X axis and Segment By dropdowns, swap button, Count or Percent | Max 7 segments plus "Other". |
-| Data quality checks (for data stewards) | Own page, not in the main menu. Interactive Dashboard footer: Show data quality checks (or open `/qa`) | Five checks: metadata completeness (required fields marked), latest sample per data source (orange = none in 12 months), values written more than one way, sites without usable coordinates, and viral measurement values that are not plotted (from the nightly build). Report problems to the data portal team; fix them at the source, not here. Hidden, not protected: anyone can open it. |
+| Data quality checks (for data stewards) | Own page, not in the main menu. Interactive Dashboard footer: Show data quality checks (or open `/qa`) | Nine checks; most have dropdowns that work on any portal field, and the address keeps your choices so a view can be shared. The bar at the top limits every check to one collecting organisation (except viral measurement values, which come from the nightly build). Metadata completeness (key or all fields; required fields marked); completeness by group (which organisation, province, etc. leaves a field out; heatmap for all key fields); latest sample by group (orange = none in 12 months); field profile (most common values, "not provided" terms, value patterns such as `9.9 A` next to `9.9`, spellings; number and date fields show a histogram and range); field over time (when a value, unit or habit changed); one value per item (e.g. a site with two latitudes); values written more than one way; sites without usable coordinates; viral measurement values that are not plotted (from the nightly build). Report problems to the data portal team; fix them at the source, not here. Hidden, not protected: anyone can open it. |
 | Viral loads | Province, City, Site, Organism, Gene Target, Measurement Unit; From and To dates; 3m, 6m, 12m, All; switches: line, full-series LOESS, PMMoV normalisation, log scale; LOESS span (0.05 to 1, default 0.2) | RT-PCR only. Dots are the mean per date with error bars (SEM); the solid gray line is a smoothed trend. Default: Alberta, Influenza A virus, last 12 months. "All" combines data without correcting for differences between labs. PMMoV normalisation awaits scientific sign-off and currently has data only for Ontario. |
 
 ## 5. Maintain
@@ -120,6 +120,9 @@ In `public/js/config.js`. Then preview (section 2), `npm test`, publish (section
 | Named segments | `EXPLORER_TOP_N = 7;` becomes `5` (max 7) |
 | Completeness field | Add `host_age: 'Host age',` to `COMPLETENESS_FIELDS` (and to `REQUIRED_FIELDS` if the specification requires it) |
 | Spelling check field | Add `geo_loc_name_county: 'County',` to `QA_NAME_FIELDS` |
+| QA "Group by" choice | Add `geo_loc_name_city: 'City',` to `QA_GROUP_FIELDS` |
+| QA page-wide filter field | `QA_FILTER_FIELD = 'sample_collected_by_organisation_name';` becomes `'geo_loc_name_state_province_territory'` |
+| QA field shown first | Change a value in `QA_DEFAULTS`, e.g. `profile: 'geo_loc_name_site',` |
 | Another "no value" term | Add `'Unknown',` to `NULL_TERMS` |
 
 ## 7. Troubleshooting

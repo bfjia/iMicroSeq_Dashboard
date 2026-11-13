@@ -88,7 +88,7 @@ export async function drawMap(el, sites) {
     const line = (s) => `<strong>${escapeHtml(s.name)}</strong><br>${fmt(s.count)} samples · ${s.active ? 'Active' : 'Historical'}`;
     const viral = (s) => `dashboard.html?site=${encodeURIComponent(s.name)}#viral`;
     const portal = (s) => `${PORTAL_EXPLORER_URL}?filters=${encodeURIComponent(JSON.stringify(and(isIn('geo_loc_name_site', [s.key]))))}`;
-    const links = (s) => (s.count >= MAP_VIRAL_MIN_SAMPLES ? `<br><a href="${viral(s)}">See viral loads for this site</a>` : '') +
+    const links = (s) => (s.count >= MAP_VIRAL_MIN_SAMPLES ? `<br><a href="${viral(s)}">Visualize this site's viral load</a>` : '') +
       `<br><a href="${portal(s)}" target="_blank" rel="noopener">Browse this site's data on the portal ↗</a>`;
     const many = p.sites.length > 1;
     const head = `<span class="coverage-tooltip-hint">${p.sites.length} sites here · ${fmt(p.count)} samples`;

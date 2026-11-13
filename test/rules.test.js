@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  trimBrackets, isNull, parseCoord, viralOrganism, viralValue, addStat, mergeStat, meanSem, dayKey, monthKey, slug,
+  trimBrackets, isNull, parseCoord, viralOrganism, viralValue, addStat, mergeStat, meanSem, dayKey, monthKey, slug, valuePattern,
 } from '../public/js/rules.js';
 import { months, years } from '../public/js/api.js';
 import { SARS2 } from '../public/js/config.js';
@@ -25,6 +25,16 @@ test('parseCoord', () => {
   assert.equal(parseCoord(['-79.4'], 'lon'), -79.4);
   assert.equal(parseCoord('Not Provided', 'lat'), null);
   assert.equal(parseCoord('95', 'lat'), null);
+});
+
+test('valuePattern', () => {
+  assert.equal(valuePattern('49.26 N'), '9.9 A');
+  assert.equal(valuePattern('-79.4'), '-9.9');
+  assert.equal(valuePattern('2021-08-23'), '9-9-9');
+  assert.equal(valuePattern('Alberta [GAZ:00002566]'), 'A [id]');
+  assert.equal(valuePattern(' Barrie'), '␣A');
+  assert.equal(valuePattern('Île-de-France'), 'A-A-A');
+  assert.equal(valuePattern(''), '(empty)');
 });
 
 test('viral rules', () => {

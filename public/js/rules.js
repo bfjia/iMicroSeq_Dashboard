@@ -70,6 +70,16 @@ export function meanSem([n, sum, sumsq]) {
   return { n, mean, sem: Math.sqrt(variance / n) };
 }
 
+// Shape of a value, for spotting mixed formats: letters -> A, digits -> 9, runs collapsed,
+// ontology ids -> [id], spaces at either end -> ␣. "49.26 N" -> "9.9 A", "2021-08-23" -> "9-9-9".
+export function valuePattern(v) {
+  const s = String(v ?? '');
+  const core = s.trim().replace(/\s*\[[^\]]*\]/g, '\u0000').replace(/\p{L}+/gu, 'A').replace(/\d+/g, '9')
+    .replace(/\s+/g, ' ').replace(/\u0000/g, ' [id]');
+  const p = (/^\s/.test(s) ? '␣' : '') + core + (/\s$/.test(s) ? '␣' : '');
+  return p.length > 40 ? `${p.slice(0, 40)}…` : p || '(empty)';
+}
+
 // Epoch ms -> 'YYYY-MM-DD' / 'YYYY-MM' (UTC)
 export const dayKey = (ms) => new Date(ms).toISOString().slice(0, 10);
 export const monthKey = (ms) => new Date(ms).toISOString().slice(0, 7);
