@@ -12,6 +12,10 @@ export function isNull(v) {
   return s === '' || s === '--' || NULLS.has(s);
 }
 
+// Viral files: empty or a null term ("Not Provided [GENEPIO:…]") -> one "(blank)" option, shown as "Not Provided".
+export const BLANK = '(blank)';
+export const blankName = (v) => (isNull(v) ? BLANK : trimBrackets(v));
+
 // Multivalued fields come back as arrays: take the first element.
 function firstVal(v) {
   return Array.isArray(v) ? (v.length ? v[0] : '') : v;

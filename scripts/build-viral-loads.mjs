@@ -11,13 +11,12 @@ import { mkdir, writeFile, rm, rename } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
-import { trimBrackets, isNull, viralOrganism, viralValue, addStat, slug } from '../public/js/rules.js';
+import { trimBrackets, isNull, viralOrganism, viralValue, addStat, slug, BLANK, blankName } from '../public/js/rules.js';
 import { API_DIRECT, VIRAL_ASSAY, PMMOV, DATE_FIELD } from '../public/js/config.js';
 
 const OUT = fileURLToPath(new URL('../public/data/viral/', import.meta.url));
 const PAGE = 1000; // 5,000-row sorted pages time out upstream
 const TRIES = 5;
-const BLANK = '(blank)';
 const SEP = '\u0000';
 
 const FIELDS = [
@@ -38,7 +37,7 @@ const HITS = `query($s: JSON, $sa: JSON) { analysis {
 // ─── Pure helpers (exported for tests) ───────────────────────────────────────
 
 export const round = (v, digits = 4) => (v === 0 ? 0 : Number(v.toPrecision(digits)));
-const name = (v) => trimBrackets(v) || BLANK;
+const name = (v) => trimBrackets(v) || BLANK; // provinces: "Not Applicable" stays, the page leaves it out
 
 // Data quality counts for the QA panel (written to meta.json): why measurements were or weren't plotted.
 export function makeQa() {
@@ -72,8 +71,8 @@ export function parseRecord(d, qa = makeQa()) {
       continue;
     }
     qa.plotted += 1;
-    qa.units[name(unit)] = (qa.units[name(unit)] || 0) + 1;
-    targets.push({ organism, gene: name(gene), unit: name(unit), value, ratio: null });
+    qa.units[blankName(unit)] = (qa.units[blankName(unit)] || 0) + 1;
+    targets.push({ organism, gene: blankName(gene), unit: blankName(unit), value, ratio: null });
   }
   // PMMoV normalisation: same record, same unit, PMMoV > 0 (mean if several PMMoV targets share the unit).
   const pm = {};
@@ -88,9 +87,9 @@ export function parseRecord(d, qa = makeQa()) {
   }
   return {
     province: name(d.geo_loc_name_state_province_territory),
-    city: name(d.geo_loc_name_city),
-    site: name(d.geo_loc_name_site),
-    org: name(d.sample_collected_by_organisation_name),
+    city: blankName(d.geo_loc_name_city),
+    site: blankName(d.geo_loc_name_site),
+    org: blankName(d.sample_collected_by_organisation_name),
     date,
     targets,
   };

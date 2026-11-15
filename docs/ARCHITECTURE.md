@@ -83,6 +83,7 @@ Shared by the browser and the build in `public/js/rules.js`; constants in `publi
 | Null terms | `NULL_TERMS` (Not Provided, Not Applicable, Not Collected, Missing, Restricted Access, `__missing__`, blank) are excluded from hero counts. The old site counted them: sites 672 to 670, organisms 6 to 5, data sources 24 to 23. |
 | Viral assay | Only `VIRAL_ASSAY` (RT-PCR) records. |
 | Target organism | A blank target taxon counts as SARS-CoV-2. |
+| Viral blanks | In the viral files, a blank or null-term city, site, gene or unit is one "(blank)" option, shown as "Not Provided" (`blankName()`). Provinces keep "Not Applicable", which the menu leaves out. |
 | SARS-CoV-2 cap | Values above `SARS2_MAX` (2000) are dropped before averaging. The cap ignores units; kept from the old site. |
 | Plottable values | Numeric text only. |
 | Averages | Per-date mean and SEM. "All" views combine `[n, sum, sumsq]` exactly. |

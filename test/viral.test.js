@@ -242,6 +242,12 @@ test('parseRecord: organism, value rules, PMMoV ratio in the same unit only', ()
     target_taxonomic_name_2: PMMOV, diagnostic_measurement_value_2: '0', diagnostic_measurement_unit_2: 'u',
   }));
   assert.equal(zeroPm.targets[0].ratio, null);
+  // Empty and null-term genes are one "(blank)" option (was two "Not Provided" in the menu).
+  const nulls = parseRecord(rec({
+    target_taxonomic_name_1: 'Influenza A virus', gene_symbol_1: 'Not Provided [GENEPIO:0001668]', diagnostic_measurement_value_1: '1', diagnostic_measurement_unit_1: 'u',
+    target_taxonomic_name_2: 'Influenza A virus', gene_symbol_2: '', diagnostic_measurement_value_2: '2', diagnostic_measurement_unit_2: 'u',
+  }));
+  assert.deepEqual(nulls.targets.map((t) => t.gene), ['(blank)', '(blank)']);
 });
 
 test('parseRecord counts data quality issues', () => {

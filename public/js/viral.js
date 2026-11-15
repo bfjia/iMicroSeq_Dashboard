@@ -2,7 +2,7 @@
 // Data comes from the nightly build in public/data/viral/ (scripts/build-viral-loads.mjs).
 // Browser globals are only touched inside functions, so the pure helpers import fine in Node.
 import { SARS2, PMMOV, LOESS_SPAN, LOESS_SPAN_MIN, LOESS_SPAN_MAX, VIRAL_ASSAY } from './config.js';
-import { meanSem, mergeStat, trimBrackets, viralOrganism } from './rules.js';
+import { meanSem, mergeStat, trimBrackets, viralOrganism, BLANK, blankName } from './rules.js';
 import { gql, and, or, isIn, dateRange } from './api.js';
 import {
   embed, colorScale, panel, failed, dataTable, getParam, setParams, linkTo, fmt, LINK_TIP, LINK_COL,
@@ -10,7 +10,6 @@ import {
 
 const BASE = 'data/viral/';
 const ALL = 'All';
-const BLANK = '(blank)';
 const TREND = 'Trend';
 const LOESS_DEGREE = 2;
 const DEFAULT_ORGANISMS = ['Influenza A virus', SARS2];
@@ -235,9 +234,9 @@ function portalKeys() {
           if (!m.get(n)?.includes(key)) m.set(n, [...(m.get(n) || []), key]);
         }
       };
-      const name = (key) => (key === '__missing__' ? '' : trimBrackets(key)) || BLANK;
-      for (const [k, f] of Object.entries(PLACE_FIELDS)) add(k, f, name);
-      for (const [k, f] of targets) add(k, f, k === 'organism' ? viralOrganism : name);
+      const province = (key) => (key === '__missing__' ? '' : trimBrackets(key)) || BLANK;
+      for (const [k, f] of Object.entries(PLACE_FIELDS)) add(k, f, k === 'province' ? province : blankName);
+      for (const [k, f] of targets) add(k, f, k === 'organism' ? viralOrganism : blankName);
       return out;
     });
 }
