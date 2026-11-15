@@ -118,7 +118,8 @@ export const VIRAL_ASSAY = 'Reverse transcription polymerase chain reaction assa
 export const SARS2 = 'Severe acute respiratory syndrome coronavirus 2';
 export const SARS2_MAX = 2000; // SARS-CoV-2 values above this are dropped before averaging
 export const PMMOV = 'Pepper mild mottle virus';
-export const LOESS_SPAN = 0.2; // default; viewers can change it on the page within the range below
+export const LOESS_SPAN = 0.2; // default for one site; viewers can change it on the page within the range below
+export const LOESS_SPAN_AREA = 0.1; // default when several sites are combined (city or site "All")
 export const LOESS_SPAN_MIN = 0.05;
 export const LOESS_SPAN_MAX = 1;
 
