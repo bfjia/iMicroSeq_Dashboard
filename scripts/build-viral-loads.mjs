@@ -3,7 +3,7 @@
 //
 // Output (compact JSON):
 //   index.json            tree province -> city -> site with available targets, plus a site-name lookup
-//   site/<id>.json        per target, per date: raw values and PMMoV ratios
+//   site/<id>.json        per target, per date: raw values and PMMoV ratios (see pairPmmov)
 //   city/<id>.json        per target, per date: [n, sum, sumsq] of raw values and of ratios
 //   province/<id>.json    same, for the whole province
 // The build fails (exit 1, previous output left in place) if fewer/more rows arrive than the API reported.
@@ -22,6 +22,7 @@ const SEP = '\u0000';
 
 const FIELDS = [
   'geo_loc_name_state_province_territory', 'geo_loc_name_city', 'geo_loc_name_site', DATE_FIELD,
+  'sample_collected_by_organisation_name',
   ...[1, 2, 3].flatMap((i) => [
     `target_taxonomic_name_${i}`, `gene_symbol_${i}`, `diagnostic_measurement_value_${i}`, `diagnostic_measurement_unit_${i}`,
   ]),
@@ -44,7 +45,7 @@ export function makeQa() {
   return { noDate: 0, plotted: 0, missing: 0, text: 0, capped: 0, textValues: {}, units: {} };
 }
 
-// Record -> { province, city, site, date, targets: [{ organism, gene, unit, value, ratio }] } or null (no date).
+// Record -> { province, city, site, org, date, targets: [{ organism, gene, unit, value, ratio }] } or null (no date).
 export function parseRecord(d, qa = makeQa()) {
   const date = dateKey(d[DATE_FIELD]);
   if (!date) {
@@ -89,6 +90,7 @@ export function parseRecord(d, qa = makeQa()) {
     province: name(d.geo_loc_name_state_province_territory),
     city: name(d.geo_loc_name_city),
     site: name(d.geo_loc_name_site),
+    org: name(d.sample_collected_by_organisation_name),
     date,
     targets,
   };
@@ -113,6 +115,7 @@ export function uniqueId(base, used) {
 export const byName = (a, b) => (a === BLANK) - (b === BLANK) || a.localeCompare(b);
 
 // Accumulates parsed records into sites, keeping per (organism, gene, unit, date) the values and ratios.
+// Values without PMMoV in their own record wait in cell.u for pairPmmov().
 export function makeStore() {
   return { sites: new Map() };
 }
@@ -120,7 +123,7 @@ export function addRecord(store, rec) {
   if (!rec || !rec.targets.length) return;
   const key = [rec.province, rec.city, rec.site].join(SEP);
   let s = store.sites.get(key);
-  if (!s) store.sites.set(key, (s = { province: rec.province, city: rec.city, site: rec.site, n: 0, series: new Map() }));
+  if (!s) store.sites.set(key, (s = { province: rec.province, city: rec.city, site: rec.site, n: 0, series: new Map(), pm: new Map() }));
   for (const t of rec.targets) {
     const k = [t.organism, t.gene, t.unit].join(SEP);
     let byDate = s.series.get(k);
@@ -129,7 +132,30 @@ export function addRecord(store, rec) {
     if (!cell) byDate.set(rec.date, (cell = { v: [], r: [] }));
     cell.v.push(round(t.value));
     if (t.ratio != null) cell.r.push(round(t.ratio));
+    else if (t.organism !== PMMOV) (cell.u ||= []).push([t.value, rec.org]);
+    else if (t.value > 0) {
+      const pk = [rec.org, t.unit, rec.date].join(SEP);
+      if (!s.pm.has(pk)) s.pm.set(pk, []);
+      s.pm.get(pk).push(t.value);
+    }
     s.n += 1;
+  }
+}
+
+// Many labs report PMMoV in its own record (one record per target). A value with no PMMoV in its own
+// record is divided by the mean PMMoV of the same site, collection date, unit and collecting organisation.
+export function pairPmmov(store) {
+  for (const s of store.sites.values()) {
+    for (const [k, byDate] of s.series) {
+      const unit = k.split(SEP)[2];
+      for (const [date, cell] of byDate) {
+        for (const [v, org] of cell.u || []) {
+          const p = s.pm.get([org, unit, date].join(SEP));
+          if (p) cell.r.push(round(v / (p.reduce((a, b) => a + b, 0) / p.length)));
+        }
+        delete cell.u;
+      }
+    }
   }
 }
 
@@ -182,6 +208,7 @@ function rollInto(stats, siteSeries) {
 
 // -> { files: Map(relPath -> object), index }
 export function buildOutput(store, meta) {
+  pairPmmov(store);
   const files = new Map();
   const usedP = new Set();
   const usedC = new Set();

@@ -289,11 +289,11 @@ test('buildOutput: tree, lookup, unique ids, rollups equal site values', () => {
   assert.deepEqual(on.t, { [SARS2]: { N1: ['u'] }, [PMMOV]: { '(blank)': ['u'] } });
 
   const siteA = files.get(`site/${on.c[1].s[0].id}.json`);
-  assert.deepEqual(siteA[SARS2].N1.u, { d: ['2024-01-01'], v: [[1, 3]], r: [[0.1]] });
+  assert.deepEqual(siteA[SARS2].N1.u, { d: ['2024-01-01'], v: [[1, 3]], r: [[0.1, 0.3]] }); // 3: PMMoV from the other record
   const prov = files.get(`province/${on.id}.json`);
   assert.deepEqual(prov[SARS2].N1.u.d, ['2024-01-01', '2024-01-02']);
   assert.deepEqual(prov[SARS2].N1.u.v[0], [3, 9, 35]);
-  assert.deepEqual(prov[SARS2].N1.u.r, [[1, 0.1, 0.01], 0]);
+  assert.deepEqual(prov[SARS2].N1.u.r, [[2, 0.4, 0.1], 0]);
   assert.equal(meanSem(prov[SARS2].N1.u.v[0]).mean, 3);
   assert.ok(files.has(`city/${on.c[1].id}.json`));
   assert.ok(files.has('index.json'));
@@ -317,6 +317,24 @@ test('buildOutput: tree, lookup, unique ids, rollups equal site values', () => {
   // Portal link place: the site's own city even when the city menu says All.
   assert.deepEqual(r.place, { province: 'Ontario', city: on.c[1].n, site: 'Site B' });
   assert.deepEqual(all.place, { province: 'Ontario', city: null, site: null });
+});
+
+test('PMMoV from its own record pairs by site, date, unit and organisation', () => {
+  const store = makeStore();
+  const lab = (org, o) => rec({ sample_collected_by_organisation_name: org, ...o });
+  const sars = (v, o) => ({ target_taxonomic_name_1: SARS2, gene_symbol_1: 'N1', diagnostic_measurement_value_1: String(v), diagnostic_measurement_unit_1: 'u', ...o });
+  const pm = (v, o) => ({ target_taxonomic_name_1: PMMOV, diagnostic_measurement_value_1: String(v), diagnostic_measurement_unit_1: 'u', ...o });
+  addRecord(store, parseRecord(lab('Lab 1', pm(100))));
+  addRecord(store, parseRecord(lab('Lab 1', pm(300))));
+  addRecord(store, parseRecord(lab('Lab 1', sars(20))));          // 20 / mean(100, 300)
+  addRecord(store, parseRecord(lab('Lab 2', sars(40))));          // other lab: no pair
+  addRecord(store, parseRecord(lab('Lab 1', sars(50, { sample_collection_start_date: '2024-01-02' })))); // other date
+  addRecord(store, parseRecord(lab('Lab 1', sars(60, { diagnostic_measurement_unit_1: 'other' }))));    // other unit
+  const { files, index } = buildOutput(store, { generatedAt: 'now', records: 6 });
+  const site = files.get(`site/${index.p[0].c[0].s[0].id}.json`);
+  assert.deepEqual(site[SARS2].N1.u, { d: ['2024-01-01', '2024-01-02'], v: [[20, 40], [50]], r: [[0.1], []] });
+  assert.equal(site[SARS2].N1.other.r, undefined);
+  assert.equal(site[PMMOV]['(blank)'].u.r, undefined);
 });
 
 test('dateFilter: stored values for the place and target, that one day', () => {

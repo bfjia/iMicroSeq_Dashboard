@@ -5,7 +5,7 @@ import { SARS2, PMMOV, LOESS_SPAN, LOESS_SPAN_MIN, LOESS_SPAN_MAX, VIRAL_ASSAY }
 import { meanSem, mergeStat, trimBrackets, viralOrganism } from './rules.js';
 import { gql, and, or, isIn, dateRange } from './api.js';
 import {
-  embed, colorScale, panel, failed, dataTable, getParam, setParams, linkTo, LINK_TIP, LINK_COL,
+  embed, colorScale, panel, failed, dataTable, getParam, setParams, linkTo, fmt, LINK_TIP, LINK_COL,
 } from './charts.js';
 
 const BASE = 'data/viral/';
@@ -372,8 +372,7 @@ function markup() {
     <div class="viral-load-filters">
       <div class="viral-filter-row">${SELECTS.slice(0, 3).map(select).join('')}</div>
       <div class="viral-filter-row">${SELECTS.slice(3).map(select).join('')}</div>
-      <p class="viral-assay-note">RT-PCR (reverse transcription polymerase chain reaction) measurements only.
-        Normalise to PMMoV divides each measurement by the same sample's Pepper mild mottle virus value in the same unit.</p>
+      <p class="viral-assay-note">RT-PCR (reverse transcription polymerase chain reaction) measurements only.</p>
     </div>
     <div class="viral-date-range-wrap" id="viral-date-range">
       <div class="viral-date-calendar-row" role="group" aria-label="Choose dates on the calendar">
@@ -388,12 +387,12 @@ function markup() {
       <div class="viral-chart-toggles">
         ${toggle('viral-show-line', 'Show line between points', false)}
         ${toggle('viral-loess-full-series', 'Full-series LOESS', true)}
-        ${toggle('viral-norm', 'Normalise to PMMoV', false)}
         ${toggle('viral-log', 'Log scale', false)}
         <label class="viral-span-field"><span>LOESS span</span>
           <input type="number" id="viral-span" class="viral-date-cal-input viral-span-input"
             min="${LOESS_SPAN_MIN}" max="${LOESS_SPAN_MAX}" step="0.05" value="${LOESS_SPAN}" /></label>
       </div>
+      <p class="viral-assay-note" id="viral-norm-note" hidden></p>
     </div>
     <p class="explore-subtitle viral-load-smoothing-note">
       The solid gray trend line is LOESS-smoothed (polynomial degree ${LOESS_DEGREE}, span <span id="viral-span-shown">${LOESS_SPAN}</span>).<br>By default it fits across all data matching your filters. Turn off Full-series LOESS to smooth only across the visible date window.
@@ -471,15 +470,23 @@ export function initViral(rootEl) {
 
     const { organism, gene, unit } = r.sel;
     const ratioOk = organism !== PMMOV && hasRatio(file, organism, gene, unit);
-    const norm = st.norm && ratioOk;
-    const normEl = $('viral-norm');
-    normEl.disabled = !ratioOk;
-    normEl.checked = norm;
-    normEl.closest('label').classList.toggle('is-disabled', !ratioOk);
+    const norm = st.norm && ratioOk; // PMMoV normalisation: only with ?norm_pmmov=1, no switch on the page (not public yet)
     $('viral-log').checked = st.log;
 
-    const series = (r.single ? siteSeries : statSeries)(file, organism, gene, unit, norm);
+    const toSeries = r.single ? siteSeries : statSeries;
+    const series = toSeries(file, organism, gene, unit, norm);
     const dates = series.map((d) => d.date);
+    // PMMoV is often measured for only part of a series: say which part.
+    const allDates = norm ? toSeries(file, organism, gene, unit, false).length : dates.length;
+    const normNote = $('viral-norm-note');
+    normNote.hidden = !st.norm;
+    normNote.textContent = !st.norm ? ''
+      : !norm ? 'No PMMoV values for this selection: raw values shown.'
+      : 'Normalised to PMMoV: each measurement is divided by the Pepper mild mottle virus value in the same unit from the same record, ' +
+        'or else from the same site, collection date and collecting organisation.' +
+        (dates.length < allDates
+          ? ` PMMoV values exist for ${fmt(dates.length)} of ${fmt(allDates)} dates in this selection, from ${dates[0]} to ${dates[dates.length - 1]}.`
+          : '');
     $('viral-date-range').classList.toggle('hidden', !dates.length);
     const first = dates[0];
     const last = dates[dates.length - 1];
@@ -536,7 +543,7 @@ export function initViral(rootEl) {
       unit,
       from: custom ? from : null,
       to: custom ? to : null,
-      norm: norm ? '1' : null,
+      norm_pmmov: st.norm ? '1' : null, // kept while browsing selections without PMMoV
       log: st.log ? '1' : null,
       span: st.span == null || st.span === LOESS_SPAN ? null : st.span,
     });
@@ -578,7 +585,6 @@ export function initViral(rootEl) {
     }));
     $('viral-show-line').addEventListener('change', update);
     $('viral-loess-full-series').addEventListener('change', update);
-    $('viral-norm').addEventListener('change', (e) => { st.norm = e.target.checked; update(); });
     $('viral-log').addEventListener('change', (e) => { st.log = e.target.checked; update(); });
     // 'change' fires on Enter or leaving the box, not on every keystroke. Not a number: back to the current span.
     $('viral-span').addEventListener('change', (e) => { st.span = parseSpan(e.target.value) ?? st.span; update(); });
@@ -586,7 +592,7 @@ export function initViral(rootEl) {
 
   function setup(loaded) {
     for (const k of ['province', 'city', 'site', 'organism', 'gene', 'unit', 'from', 'to']) st[k] = getParam(k);
-    st.norm = getParam('norm') === '1';
+    st.norm = getParam('norm_pmmov') === '1';
     st.log = getParam('log') === '1';
     st.span = parseSpan(getParam('span'));
     // ?site=<name> alone (links from the map): find its province and city.
