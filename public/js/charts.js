@@ -37,21 +37,31 @@ export async function embed(el, spec) {
     el.style.minHeight = '';
   }
   el.vegaView = res.view;
-  const tip = res.view.tooltip();
-  if (tip) res.view.tooltip(function (...args) { tip.apply(this, args); tipOnScreen(); });
   linkClicks(res.view);
   return res;
 }
 
 // Vega's tooltip goes beside the pointer, but on a narrow screen it may fit on neither side and is
 // then left hanging off the edge. Push it back inside the window.
-function tipOnScreen() {
-  const el = document.getElementById('vg-tooltip-element');
-  if (!el?.classList.contains('visible')) return;
+// Don't wrap view.tooltip() for this: setting it on a drawn view resets the renderer, which empties
+// the chart until something redraws it (seconds, in some browsers). vega-tooltip reuses an element
+// with its id, so make that element here and correct it whenever the tooltip moves it.
+function tipOnScreen(el) {
+  if (!el.classList.contains('visible')) return;
   const r = el.getBoundingClientRect();
   const pad = 8;
-  el.style.left = `${Math.max(pad, Math.min(r.left, innerWidth - r.width - pad))}px`;
-  el.style.top = `${Math.max(pad, Math.min(r.top, innerHeight - r.height - pad))}px`;
+  const left = Math.max(pad, Math.min(r.left, innerWidth - r.width - pad));
+  const top = Math.max(pad, Math.min(r.top, innerHeight - r.height - pad));
+  // Only when off screen, so this change doesn't call the observer again forever.
+  if (Math.abs(left - r.left) > 0.5) el.style.left = `${left}px`;
+  if (Math.abs(top - r.top) > 0.5) el.style.top = `${top}px`;
+}
+if (typeof document !== 'undefined') { // not in Node (tests import this file)
+  const tipEl = document.createElement('div');
+  tipEl.id = 'vg-tooltip-element';
+  tipEl.className = 'vg-tooltip';
+  document.body.append(tipEl);
+  new MutationObserver(() => tipOnScreen(tipEl)).observe(tipEl, { attributes: true, attributeFilter: ['style', 'class'] });
 }
 
 // ─── Links to the portal explorer ────────────────────────────────────────────
