@@ -71,7 +71,7 @@ Build output (`public/data/viral/`, gitignored): 420 files in the last full buil
 | `public/data/viral/site/<id>.json` | `{organism:{gene:{unit:{d:[dates], v:[[values]], r?:[[ratios]]}}}}` |
 | `public/data/viral/city/<id>.json`, `public/data/viral/province/<id>.json` | Same shape, but `v[i]` and `r[i]` are `[n, sum, sumsq]` (`r[i]` is 0 when none) so groups combine exactly |
 
-PMMoV ratios (`r`) currently exist only for Ontario (171 of 315 sites).
+PMMoV ratios (`r`) currently exist only for Ontario (175 of 303 sites).
 
 ## Data rules
 
@@ -87,7 +87,7 @@ Shared by the browser and the build in `public/js/rules.js`; constants in `publi
 | Plottable values | Numeric text only. |
 | Averages | Per-date mean and SEM. "All" views combine `[n, sum, sumsq]` exactly. |
 | LOESS | Tricube weights, degree 2, span `LOESS_SPAN` (0.2); same as the old site and identical to R `loess(surface = "direct")`. Viewers can change the span on the page, within `LOESS_SPAN_MIN` to `LOESS_SPAN_MAX` (0.05 to 1). Fitted values are clamped at 0 and drawn as a monotone curve (smooth, never overshoots). With few points (e.g. 52 weekly dates with Full-series off) each local fit uses ~10 neighbours, so the curve follows the data closely. R reference scripts in `scripts/smoothing/`. |
-| PMMoV normalisation | Target value divided by the mean of the same record's PMMoV values above 0 in the same unit. **Awaiting scientific sign-off.** |
+| PMMoV normalisation | Target value divided by the mean of the same record's PMMoV values above 0 in the same unit. A record without PMMoV uses the mean PMMoV (above 0, same unit) of the records from the same site, collection date and collecting organisation, since many labs report PMMoV as its own record. **Awaiting scientific sign-off**, so there is no switch: `?norm_pmmov=1` turns it on, with a note on what was divided and which dates have PMMoV. |
 
 Known data caveats: catchment population is empty (0% recorded, so per-capita rates are not offered); viral lineage is filled for only ~44 records; measurement units are mixed.
 

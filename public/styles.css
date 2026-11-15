@@ -569,10 +569,6 @@ body {
   cursor: pointer;
   user-select: none;
 }
-.viral-show-line-toggle.is-disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
 .viral-toggle-input {
   position: absolute;
   width: 1px;
