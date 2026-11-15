@@ -461,6 +461,8 @@ export function initViral(rootEl) {
     let keys;
     try {
       [file, keys] = await Promise.all([getFile(r.file), linkKeys]);
+      // Let the browser paint the faded chart before the (blocking) redraw.
+      await new Promise((done) => requestAnimationFrame(() => setTimeout(done)));
     } catch (err) {
       if (token === seq) failed(chartEl, err, update);
       return;
