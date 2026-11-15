@@ -118,7 +118,15 @@ export async function drawMap(el, sites) {
       t.options.direction = below ? 'bottom' : 'top';
       t.update();
     }
-    list = t.getElement().querySelector('.coverage-list');
+    // Near the left or right edge of a narrow map, slide the tooltip sideways so it stays on the map.
+    const tipEl = t.getElement();
+    tipEl.style.marginLeft = '';
+    const box = tipEl.getBoundingClientRect();
+    const mapBox = el.getBoundingClientRect();
+    const pad = 4;
+    const shift = Math.max(mapBox.left + pad - box.left, Math.min(0, mapBox.right - pad - box.right));
+    if (shift) tipEl.style.marginLeft = `${shift}px`;
+    list = tipEl.querySelector('.coverage-list');
   });
   map.on('tooltipclose', () => { list = null; });
   el.addEventListener('wheel', (e) => {

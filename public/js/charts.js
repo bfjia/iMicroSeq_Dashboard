@@ -28,8 +28,21 @@ export function colorScale(domain) {
 
 export async function embed(el, spec) {
   const res = await window.vegaEmbed(el, { $schema: SCHEMA, config: VEGA_CONFIG, ...spec }, { actions: false });
+  const tip = res.view.tooltip();
+  if (tip) res.view.tooltip(function (...args) { tip.apply(this, args); tipOnScreen(); });
   linkClicks(res.view);
   return res;
+}
+
+// Vega's tooltip goes beside the pointer, but on a narrow screen it may fit on neither side and is
+// then left hanging off the edge. Push it back inside the window.
+function tipOnScreen() {
+  const el = document.getElementById('vg-tooltip-element');
+  if (!el?.classList.contains('visible')) return;
+  const r = el.getBoundingClientRect();
+  const pad = 8;
+  el.style.left = `${Math.max(pad, Math.min(r.left, innerWidth - r.width - pad))}px`;
+  el.style.top = `${Math.max(pad, Math.min(r.top, innerHeight - r.height - pad))}px`;
 }
 
 // ─── Links to the portal explorer ────────────────────────────────────────────

@@ -245,6 +245,24 @@ body {
   border-radius: 6px;
 }
 
+/* Leaflet's nowrap made long site names wider than a phone (two classes: leaflet.css loads after this file) */
+.leaflet-tooltip.coverage-tooltip {
+  white-space: normal;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 48px));
+}
+
+/* Vega chart tooltip: never wider than the window (charts.js keeps it inside the window) */
+#vg-tooltip-element {
+  box-sizing: border-box;
+  max-width: calc(100vw - 16px);
+}
+
+#vg-tooltip-element table tr td.value {
+  max-width: min(300px, calc(100vw - 120px));
+  overflow-wrap: anywhere;
+}
+
 /* --- Explore section: kicker, subtitle, axis selects, chart, CTAs --- */
 .explore-header {
   display: flex;
