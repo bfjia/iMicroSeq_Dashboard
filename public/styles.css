@@ -730,6 +730,32 @@ a {
   animation: spin 0.8s linear infinite;
 }
 
+/* Redrawing a chart (charts.js panel()): the old one fades under a spinner until the new one is drawn */
+.panel-updating {
+  position: relative;
+}
+
+.panel-updating > * {
+  opacity: 0.35;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.panel-updating::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  box-sizing: border-box;
+  border: 3px solid #dbe1f5;
+  border-top-color: #4a63e7;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
 .hero-value .spinner {
   width: 28px;
   height: 28px;
@@ -748,7 +774,8 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .spinner {
+  .spinner,
+  .panel-updating::after {
     animation-duration: 2.4s;
   }
 }

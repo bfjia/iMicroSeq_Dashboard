@@ -27,7 +27,16 @@ export function colorScale(domain) {
 }
 
 export async function embed(el, spec) {
-  const res = await window.vegaEmbed(el, { $schema: SCHEMA, config: VEGA_CONFIG, ...spec }, { actions: false });
+  // vegaEmbed empties el before drawing: hold its height meanwhile so the page doesn't jump.
+  if (el.offsetHeight) el.style.minHeight = `${el.offsetHeight}px`;
+  el.vegaView?.finalize(); // the chart being replaced
+  let res;
+  try {
+    res = await window.vegaEmbed(el, { $schema: SCHEMA, config: VEGA_CONFIG, ...spec }, { actions: false });
+  } finally {
+    el.style.minHeight = '';
+  }
+  el.vegaView = res.view;
   const tip = res.view.tooltip();
   if (tip) res.view.tooltip(function (...args) { tip.apply(this, args); tipOnScreen(); });
   linkClicks(res.view);
@@ -125,14 +134,20 @@ export function failed(el, err, retry) {
   el.append(box);
 }
 
-// Run work(el) with a loading state, and an error + retry if it throws.
+// Run work(el, stale) with a loading state, and an error + retry if it throws.
+// Redrawing a chart already shown: the old chart fades (with a spinner) instead of going blank.
+// stale() is true once a newer panel() call on el has started: work should then stop before drawing.
 export async function panel(el, work) {
-  loading(el);
+  const run = (el.panelRun = (el.panelRun || 0) + 1);
+  const stale = () => run !== el.panelRun;
+  if (el.querySelector('canvas, svg')) el.classList.add('panel-updating');
+  else loading(el);
   try {
-    await work(el);
+    await work(el, stale);
   } catch (err) {
-    failed(el, err, () => panel(el, work));
+    if (!stale()) failed(el, err, () => panel(el, work));
   }
+  if (!stale()) el.classList.remove('panel-updating');
   setFooter();
 }
 

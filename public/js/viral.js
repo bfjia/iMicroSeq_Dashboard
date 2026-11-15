@@ -1,7 +1,7 @@
 // Viral loads (RT-PCR): mean per date ± SEM, LOESS trend, optional PMMoV normalisation.
 // Data comes from the nightly build in public/data/viral/ (scripts/build-viral-loads.mjs).
 // Browser globals are only touched inside functions, so the pure helpers import fine in Node.
-import { SARS2, PMMOV, LOESS_SPAN, LOESS_SPAN_MIN, LOESS_SPAN_MAX, VIRAL_ASSAY } from './config.js';
+import { SARS2, PMMOV, LOESS_SPAN, LOESS_SPAN_AREA, LOESS_SPAN_MIN, LOESS_SPAN_MAX, VIRAL_ASSAY } from './config.js';
 import { meanSem, mergeStat, trimBrackets, viralOrganism, BLANK, blankName } from './rules.js';
 import { gql, and, or, isIn, dateRange } from './api.js';
 import {
@@ -495,7 +495,8 @@ export function initViral(rootEl) {
     syncDates(dates, from, to);
 
     const visible = series.filter((d) => d.date >= from && d.date <= to);
-    const span = st.span ?? LOESS_SPAN;
+    const spanDefault = r.single ? LOESS_SPAN : LOESS_SPAN_AREA;
+    const span = st.span ?? spanDefault;
     $('viral-span').value = span;
     $('viral-span-shown').textContent = span;
     const links = new Map(); // date -> portal link
@@ -544,7 +545,7 @@ export function initViral(rootEl) {
       to: custom ? to : null,
       norm_pmmov: st.norm ? '1' : null, // kept while browsing selections without PMMoV
       log: st.log ? '1' : null,
-      span: st.span == null || st.span === LOESS_SPAN ? null : st.span,
+      span: st.span == null || st.span === spanDefault ? null : st.span,
     });
   }
 

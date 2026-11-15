@@ -1,6 +1,6 @@
 // Interactive Dashboard page: sample explorer (live) and viral loads (nightly files, js/viral.js).
 // Data quality checks are their own page (qa.html, js/qa.js), linked from the footer.
-import { gql, aliased, and, isIn, dateRange, periodRange, years, months } from './api.js';
+import { gql, aliasedMany, and, isIn, dateRange, periodRange, years, months } from './api.js';
 import { trimBrackets, monthKey } from './rules.js';
 import {
   DATE_FIELD, EXPLORER_FIELDS, EXPLORER_DEFAULT_X, EXPLORER_DEFAULT_SEGMENT, EXPLORER_TOP_N, PALETTE,
@@ -67,7 +67,7 @@ async function crossTab(x, seg, dim) {
   // Time on X: one block per period, values of the segment field inside.
   if (isTime(x)) {
     const ps = periods(x);
-    const res = await aliased(ps.map((p, i) => ({ alias: `p${i}`, sqon: dateRange(p.start, p.end) })), `data__${seg} { buckets(max: 5000) { key doc_count } }`);
+    const res = await aliasedMany(ps.map((p, i) => ({ alias: `p${i}`, sqon: dateRange(p.start, p.end) })), `data__${seg} { buckets(max: 5000) { key doc_count } }`);
     const rows = [];
     ps.forEach((p, i) => {
       for (const b of res[`p${i}`][`data__${seg}`].buckets) {
@@ -80,7 +80,7 @@ async function crossTab(x, seg, dim) {
   // Time as segment: one block per period, values of the X field inside.
   if (isTime(seg)) {
     const ps = periods(seg);
-    const res = await aliased(ps.map((p, i) => ({ alias: `p${i}`, sqon: dateRange(p.start, p.end) })), `data__${x} { buckets(max: 5000) { key doc_count } }`);
+    const res = await aliasedMany(ps.map((p, i) => ({ alias: `p${i}`, sqon: dateRange(p.start, p.end) })), `data__${x} { buckets(max: 5000) { key doc_count } }`);
     const rows = [];
     ps.forEach((p, i) => {
       for (const b of res[`p${i}`][`data__${x}`].buckets) {
@@ -96,7 +96,7 @@ async function crossTab(x, seg, dim) {
   const rest = values.slice(EXPLORER_TOP_N).flatMap((v) => v.raw);
   const blocks = top.map((v, i) => ({ alias: `s${i}`, sqon: { op: 'and', content: [isIn(seg, v.raw)] }, seg: v.label }));
   if (rest.length) blocks.push({ alias: 'other', sqon: { op: 'and', content: [isIn(seg, rest)] }, seg: 'Other' });
-  const res = await aliased(blocks, `data__${x} { buckets(max: 5000) { key doc_count } }`);
+  const res = await aliasedMany(blocks, `data__${x} { buckets(max: 5000) { key doc_count } }`);
   const rows = [];
   for (const b of blocks) {
     for (const k of res[b.alias][`data__${x}`].buckets) {
@@ -219,11 +219,11 @@ function explorer() {
     btnCount.setAttribute('aria-pressed', String(!pct));
     btnPct.setAttribute('aria-pressed', String(pct));
     setParams({ x: x === EXPLORER_DEFAULT_X ? null : x, seg: seg === EXPLORER_DEFAULT_SEGMENT ? null : seg, pct: pct ? '1' : null });
-    return panel(chart, async () => {
+    return panel(chart, async (el, stale) => {
       const dim = await loadDimensions();
       const shaped = shape(await crossTab(x, seg, dim), x, seg);
+      if (stale()) return; // a newer choice is loading
       addLinks(shaped, x, seg, dim);
-      chart.innerHTML = '';
       await embed(chart, explorerSpec(shaped, x, seg, pct, chart.clientWidth < 700));
       dataTable(table, [{ key: 'x', label: label(x) }, { key: 'seg', label: label(seg) }, { key: 'n', label: 'Samples' }, LINK_COL],
         shaped.rows.map((r) => ({ ...r, x: isTime(x) ? r.x.slice(0, x === 'Year' ? 4 : 7) : r.x })));

@@ -1,6 +1,6 @@
 // At a Glance page. One live query feeds the hero cards, breakdown, map and cumulative
 // chart; the monthly-by-organism chart adds one more when it scrolls into view.
-import { gql, aliased, and, isIn, dateRange, periodRange, months } from './api.js';
+import { gql, aliasedMany, and, isIn, dateRange, periodRange, months } from './api.js';
 import { trimBrackets, isNull, parseCoord, monthKey } from './rules.js';
 import { DATE_FIELD, ACTIVE_DAYS, PALETTE } from './config.js';
 import { embed, panel, whenVisible, dataTable, colorScale, setFooter, linkTo, LINK_TIP, LINK_COL, SPINNER } from './charts.js';
@@ -121,7 +121,7 @@ const monthStart = (key) => `${key}-01`;
 
 async function monthlyByOrganism(d) {
   const ms = months(d.minDate, d.maxDate);
-  const res = await aliased(
+  const res = await aliasedMany(
     ms.map((m, i) => ({ alias: `m${i}`, sqon: dateRange(m.start, m.end) })),
     'data__organism { buckets { key doc_count } }',
   );
@@ -225,19 +225,19 @@ function activity() {
   const btnCumulative = document.getElementById('activity-cumulative');
   let mode = 'cumulative';
 
-  const draw = () => panel(el, async () => {
+  const draw = () => panel(el, async (_, stale) => {
     const d = await loadIndex();
     if (mode === 'monthly') {
-      subtitle.textContent = 'Samples collected per month, by organism';
       const m = await monthlyByOrganism(d);
-      el.innerHTML = '';
+      if (stale()) return; // switched again while loading
+      subtitle.textContent = 'Samples collected per month, by organism';
       await embed(el, monthlySpec(m));
       dataTable(table, [{ key: 'month', label: 'Month' }, { key: 'organism', label: 'Organism' }, { key: 'n', label: 'Samples' }, LINK_COL],
         m.rows.map((r) => ({ ...r, month: r.month.slice(0, 7) })));
     } else {
+      if (stale()) return;
       subtitle.textContent = 'Total samples collected up to each month';
       const rows = cumulativeRows(d);
-      el.innerHTML = '';
       await embed(el, cumulativeSpec(rows));
       dataTable(table, [{ key: 'month', label: 'Month' }, { key: 'n', label: 'Samples' }, { key: 'total', label: 'Cumulative' }, LINK_COL],
         rows.map((r) => ({ ...r, month: r.month.slice(0, 7) })));
