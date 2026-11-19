@@ -5,6 +5,8 @@
 // and falls back to the portal API directly if the proxy fails.
 export const API_PROXY = '/api/graphql';
 export const API_DIRECT = 'https://arranger-environmental.imicroseq-dataportal.ca/graphql';
+// Proxy slower than this (ms) -> give up on it and call the portal API directly.
+export const PROXY_TIMEOUT_MS = 10000;
 
 // Date field used for every time axis.
 export const DATE_FIELD = 'sample_collection_start_date';

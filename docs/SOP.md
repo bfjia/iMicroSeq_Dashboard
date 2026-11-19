@@ -132,6 +132,7 @@ In `public/js/config.js`. Then preview (section 2), `npm test`, publish (section
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Map blank, tiles 503 | `CARTO_API_KEY` missing on the Worker | `npx wrangler secret put CARTO_API_KEY --env=""` |
+| Production only: pages slow, no footer date, `/api/graphql` 522 | Portal API rule missing in the `imicroseq-dataportal.ca` zone | Section 9, step 6 |
 | Panel says "Could not load this from the data portal" | Portal API down, or ad blocker | Disable ad blockers, click Try again, check the portal |
 | Viral data is old, no build that night | `DEPLOY_HOOK_URL` missing or the hook was deleted | The Worker, Logs: look for "DEPLOY_HOOK_URL secret is not set" or "Deploy hook failed". Redo section 3, first deploy, step 5 |
 | Viral data is old, builds failing | See the build log | The Worker, Deployments, open the failed build, read the last red lines |
@@ -162,6 +163,18 @@ Production is a separate repo; you open a pull request from this repo into it. N
 3. In the Cloudflare account that owns `imicroseq-dataportal.ca`: Workers & Pages, `dashboard-imicroseq-dataportal-ca`, Settings, Build, Connect. Same settings as section 3, step 2, except: the production repo, and deploy command `npx wrangler deploy --env production`. The first build starts the cutover.
 4. Map key, if the Worker has none yet: `npx wrangler secret put CARTO_API_KEY --env production`.
 5. Nightly rebuild: create a deploy hook on that Worker (section 3, step 5), then `npx wrangler secret put DEPLOY_HOOK_URL --env production`.
-6. Check `https://dashboard.imicroseq-dataportal.ca`: pages load, footer dates current, map shows tiles.
-7. In the production repo update the live links in `README.md` and `CLAUDE.md`, and `HELP_URL` in `public/js/config.js`. Publish.
-8. Optional: disconnect or delete the staging Worker `imicroseq-dashboard` to save build minutes (both Workers share the account's 3,000 if they are in the same account).
+6. Portal API rule. The production Worker is in the same Cloudflare zone as the portal API, so without this rule every data request fails with 522 after ~40 s and pages load slowly, with no footer date. In the `imicroseq-dataportal.ca` zone: Rules, Overview, Create rule, Configuration Rule.
+   - Name: `Arranger API: Strict SSL`
+   - Custom filter expression: `(http.host eq "arranger-environmental.imicroseq-dataportal.ca")`
+   - Then: SSL, Add, **Strict** (not Full, not "SSL-Only Origin Pull")
+   - Deploy. If warned the record is not proxied, click "Ignore and deploy rule anyway". The rule does not affect the portal itself.
+
+   Test (run twice; expect `200` with `x-cache: MISS`, then `x-cache: HIT`):
+   ```bash
+   curl -s -D - -o /dev/null -X POST -H 'Content-Type: application/json' \
+     --data '{"query":"{ analysis { hits { total } } }"}' \
+     https://dashboard.imicroseq-dataportal.ca/api/graphql | grep -iE '^(HTTP|x-cache)'
+   ```
+7. Check `https://dashboard.imicroseq-dataportal.ca`: pages load, footer dates current, map shows tiles.
+8. In the production repo update the live links in `README.md` and `CLAUDE.md`, and `HELP_URL` in `public/js/config.js`. Publish.
+9. Optional: disconnect or delete the staging Worker `imicroseq-dashboard` to save build minutes (both Workers share the account's 3,000 if they are in the same account).

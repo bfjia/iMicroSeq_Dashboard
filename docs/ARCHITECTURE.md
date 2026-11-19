@@ -50,7 +50,7 @@ Each panel loads when it scrolls near the viewport (`whenVisible`). Identical qu
 | anything else | `ASSETS` (static files). |
 | cron `30 8 * * *` (`[triggers]` in `wrangler.toml`) | POSTs to the `DEPLOY_HOOK_URL` secret, which starts a Workers Build of `main`. Logs an error if the secret is missing or the hook fails. |
 
-If the proxy fails, `public/js/api.js` calls the portal API directly, retrying once after 0.8 s. Static headers (browser cache lifetimes) are in `public/_headers`.
+If the proxy fails or takes longer than 10 s (`PROXY_TIMEOUT_MS`), `public/js/api.js` calls the portal API directly, retrying once after 0.8 s. Static headers (browser cache lifetimes) are in `public/_headers`.
 
 ## Nightly pipeline
 
