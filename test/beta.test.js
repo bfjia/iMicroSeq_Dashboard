@@ -83,4 +83,6 @@ test('compareSpec: empty text, legend highlight, colours in chosen order, symlog
   assert.equal(log.layer.length, 3);
   assert.deepEqual(log.layer[0].encoding.y.scale, { type: 'symlog', constant: 25, nice: true });
   assert.ok(!log.layer[2].encoding.tooltip.some((t) => t.field === 'trend'));
+  const fixed = compareSpec(rows, { sites: ['B', 'A'], yTitle: '%', from: '2023-06-01', to: '2024-06-01' });
+  assert.deepEqual(fixed.layer[1].encoding.x.scale.domain, [Date.UTC(2023, 5, 1), Date.UTC(2024, 5, 1)]);
 });

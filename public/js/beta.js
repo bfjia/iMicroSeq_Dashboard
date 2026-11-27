@@ -7,6 +7,7 @@ import { PALETTE, LOESS_SPAN, LOESS_SPAN_MIN, LOESS_SPAN_MAX, BETA_COMPARE_SITES
 import { BLANK } from './rules.js';
 import {
   BASE, ALL, PRESETS, toggle, fillSelect, getJSON, siteSeries, withTrend, parseSpan, rangeStart, pickOrganism, label,
+  day, dateWindow, xScale, dayText, presetButtons, rangeNote, onDateBox,
 } from './viral.js';
 import { embed, colorScale, panel, failed, dataTable, getParam, setParams } from './charts.js';
 
@@ -69,7 +70,7 @@ export function scaleToPeak(series, { from, to, span = LOESS_SPAN, full = true, 
 
 // rows: { site, unit, date, mean, n, trendRaw, value, trend }. sites: labels in the order chosen (keeps colours).
 // Click a legend entry to highlight that site; hover shows the nearest point of any line.
-export function compareSpec(rows, { sites, yTitle, log, points, raw, narrow, empty = 'No data for selected filters' }) {
+export function compareSpec(rows, { sites, yTitle, log, points, raw, narrow, from, to, empty = 'No data for selected filters' }) {
   if (!rows.length) {
     return {
       description: 'Viral load trends by site',
@@ -82,7 +83,7 @@ export function compareSpec(rows, { sites, yTitle, log, points, raw, narrow, emp
   const scale = log
     ? { type: 'symlog', constant: Number.isFinite(minPos) ? minPos : 1, nice: true }
     : { nice: true, zero: true, domainMin: 0 };
-  const x = { field: 'date', type: 'temporal', timeUnit: 'utcyearmonthdate', axis: { title: 'Date', labelOverlap: true, format: '%b %d, %Y' } };
+  const x = { field: 'date', type: 'temporal', timeUnit: 'utcyearmonthdate', ...xScale(from, to), axis: { title: 'Date', labelOverlap: true, format: '%b %d, %Y' } };
   const y = (field) => ({ field, type: 'quantitative', scale, axis: { title: yTitle } });
   const color = {
     field: 'site', type: 'nominal', scale: colorScale(sites),
@@ -149,10 +150,9 @@ function markup() {
           <input type="date" id="beta-from" class="viral-date-cal-input" /></label>
         <label class="viral-date-cal-field"><span class="viral-date-cal-label">To</span>
           <input type="date" id="beta-to" class="viral-date-cal-input" /></label>
-        <div class="viral-presets" role="group" aria-label="Date range presets">
-          ${PRESETS.map(([t]) => `<button type="button" class="viral-preset" data-preset="${t}" aria-pressed="false">${t}</button>`).join('')}
-        </div>
+        ${presetButtons()}
       </div>
+      <p class="viral-range-note" id="beta-range-note" role="status" hidden></p>
       <div class="viral-chart-toggles">
         ${toggle('beta-scale', '% of each site\'s peak', true)}
         ${toggle('beta-points', 'Show data points', false)}
@@ -205,6 +205,9 @@ function compareSites(rootEl) {
   let lost = 0; // sites in the address that aren't in the data (said once)
   let seq = 0;
   let shownDates = [];
+  let shown = null; // { from, to } on screen: kept when the sites or other choices change
+  // Another choice: same dates as now, so the x-axis stays put.
+  const keep = () => { if (shown) Object.assign(st, shown); };
   // Viewer's choices; null = default. Resolved against the data on every update.
   const st = { organism: null, gene: null, ids: [], from: null, to: null, span: null, log: false, raw: false };
 
@@ -243,6 +246,7 @@ function compareSites(rootEl) {
       btn.setAttribute('aria-label', `Remove ${s.label}`);
       btn.onclick = () => {
         st.ids = st.ids.filter((id) => id !== s.id);
+        keep();
         update();
       };
       chip.append(dot, s.label, btn);
@@ -283,12 +287,13 @@ function compareSites(rootEl) {
     });
     const dates = [...new Set(per.flatMap((p) => p.series.map((d) => d.date)))].sort();
     $('beta-date-range').classList.toggle('hidden', !dates.length);
-    const first = dates[0];
-    const last = dates[dates.length - 1];
-    let from = st.from && st.from <= last ? (st.from < first ? first : st.from) : rangeStart(dates, 12);
-    let to = st.to && st.to >= first ? (st.to > last ? last : st.to) : last;
-    if (from > to) [from, to] = [to, from];
+    const win = dateWindow(dates, st.from, st.to);
+    const { from, to } = win;
+    if (dates.length) shown = { from, to };
     syncDates(dates, from, to);
+    const withData = per.filter((p) => p.series.length).length;
+    rangeNote($('beta-range-note'), win, dates, withData === 1 ? 'This site has' : 'These sites have',
+      () => { st.from = dates[0]; st.to = null; update(); });
 
     const span = st.span ?? LOESS_SPAN;
     $('beta-span').value = span;
@@ -312,7 +317,7 @@ function compareSites(rootEl) {
     notice([
       lost ? `${lost} site${lost > 1 ? 's' : ''} in the address ${lost > 1 ? 'are' : 'is'} not in the viral load data and left out.` : '',
       missing.length ? `No ${what} data: ${missing.join(', ')}.` : '',
-      outside.length ? `No data in this date range: ${outside.join(', ')}.` : '',
+      outside.length && !win.empty ? `No data in this date range: ${outside.join(', ')}.` : '',
       flat.length ? `Trend is 0 throughout this date range, so it can't be scaled: ${flat.join(', ')}.` : '',
       st.raw && units.length > 1 ? `These sites use different units (${units.join('; ')}), so raw values can't be compared. Turn % of each site's peak back on.` : '',
     ].filter(Boolean).join(' '));
@@ -325,7 +330,10 @@ function compareSites(rootEl) {
       points: $('beta-points').checked,
       raw: st.raw,
       narrow: chartEl.clientWidth < 600,
-      empty: chosen.length ? 'No data for selected filters' : 'Add a site to compare',
+      from,
+      to,
+      empty: !chosen.length ? 'Add a site to compare'
+        : win.empty && dates.length ? `No data between ${dayText(from)} and ${dayText(to)}` : 'No data for selected filters',
     });
     try {
       const res = await embed(chartEl, spec);
@@ -357,10 +365,6 @@ function compareSites(rootEl) {
 
   function syncDates(dates, from, to) {
     shownDates = dates;
-    for (const id of ['beta-from', 'beta-to']) {
-      $(id).min = dates[0] || '';
-      $(id).max = dates[dates.length - 1] || '';
-    }
     $('beta-from').value = from || '';
     $('beta-to').value = to || '';
     const last = dates[dates.length - 1];
@@ -371,14 +375,15 @@ function compareSites(rootEl) {
   }
 
   function bind() {
-    $('beta-organism').onchange = (e) => { st.organism = e.target.value; update(); };
-    $('beta-gene').onchange = (e) => { st.gene = e.target.value; update(); };
+    $('beta-organism').onchange = (e) => { st.organism = e.target.value; keep(); update(); };
+    $('beta-gene').onchange = (e) => { st.gene = e.target.value; keep(); update(); };
     $('beta-add').onchange = (e) => {
       if (e.target.value && st.ids.length < MAX_SITES) st.ids.push(e.target.value);
+      keep();
       update();
     };
-    $('beta-from').onchange = (e) => { st.from = e.target.value || null; update(); };
-    $('beta-to').onchange = (e) => { st.to = e.target.value || null; update(); };
+    $('beta-from').onchange = onDateBox(st, 'from', update);
+    $('beta-to').onchange = onDateBox(st, 'to', update);
     rootEl.querySelectorAll('.viral-preset').forEach((b) => b.addEventListener('click', () => {
       // 12 months is the default (no dates in the URL); other presets become explicit dates.
       const months = PRESETS.find(([t]) => t === b.dataset.preset)[1];
@@ -404,7 +409,9 @@ function compareSites(rootEl) {
       : BETA_COMPARE_SITES.map((n) => sites.find((s) => s.n === n)?.id).filter(Boolean);
     st.ids = [...new Set(ids.filter((id) => byId.has(id)))].slice(0, MAX_SITES);
     lost = new Set(ids.filter((id) => !byId.has(id))).size;
-    for (const k of ['organism', 'gene', 'from', 'to']) st[k] = getParam(k);
+    for (const k of ['organism', 'gene']) st[k] = getParam(k);
+    st.from = day(getParam('from'));
+    st.to = day(getParam('to'));
     st.span = parseSpan(getParam('span'));
     st.log = getParam('log') === '1';
     st.raw = getParam('raw') === '1';

@@ -431,6 +431,17 @@ body {
   line-height: 1.4;
 }
 
+.viral-range-note {
+  margin: 0 auto;
+  max-width: 52rem;
+  font-size: 0.9rem;
+  color: #92400e;
+  text-align: center;
+}
+.viral-range-note[hidden] {
+  display: none;
+}
+
 .viral-notice {
   margin: 0 auto;
   padding: 0.5rem 0.9rem;

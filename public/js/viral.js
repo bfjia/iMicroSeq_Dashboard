@@ -167,6 +167,58 @@ export function rangeStart(dates, months) {
   return dates.find((x) => x >= cut) ?? dates[0];
 }
 
+// A real yyyy-mm-dd day with a four-digit year, else null (a year half typed in a date box reads as 0002).
+export function day(v) {
+  if (!/^[1-9]\d{3}-\d{2}-\d{2}$/.test(v ?? '')) return null;
+  const t = Date.parse(`${v}T00:00:00Z`); // NaN for month 13; Feb 30 rolls over to March
+  return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === v ? v : null;
+}
+
+// From and To as the viewer chose them, not trimmed to the data, so the x-axis only moves when they do.
+// Not chosen: the last 12 months up to the latest data point. empty: no data date in the window.
+export function dateWindow(dates, from, to) {
+  let f = from ?? rangeStart(dates, 12);
+  let t = to ?? dates[dates.length - 1];
+  if (f > t) [f, t] = [t, f];
+  return { from: f, to: t, empty: !dates.some((d) => d >= f && d <= t) };
+}
+
+// Date box 'change' handler: empty box = back to the default; a half-typed year waits for the rest.
+export const onDateBox = (st, key, update) => (e) => {
+  const v = day(e.target.value);
+  if (!v && e.target.value) return;
+  st[key] = v;
+  update();
+};
+
+// x-axis fixed to the window (gaps at either end stay visible).
+export const xScale = (from, to) =>
+  (from && to ? { scale: { domain: [Date.parse(`${from}T00:00:00Z`), Date.parse(`${to}T00:00:00Z`)] } } : {});
+
+export const dayText = (d) =>
+  new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+
+// Preset buttons: counted back from the latest data point on screen, not from today.
+export const presetButtons = () => `
+  <div class="viral-date-cal-field"><span class="viral-date-cal-label">Up to latest data</span>
+    <div class="viral-presets" role="group" aria-label="Date range up to the latest data point">
+      ${PRESETS.map(([t, m]) => `<button type="button" class="viral-preset" data-preset="${t}" aria-pressed="false"
+        title="${m ? `The last ${m} months up to the latest data point` : 'Every date with data'}">${t}</button>`).join('')}
+    </div>
+  </div>`;
+
+// Nothing between From and To: say where the data is, with a button that shows it. dates: sorted.
+export function rangeNote(el, win, dates, whose, show) {
+  el.hidden = !win.empty || !dates.length;
+  if (el.hidden) return el.replaceChildren();
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'retry-btn';
+  btn.textContent = 'Show those dates';
+  btn.onclick = show;
+  el.replaceChildren(`${whose} data from ${dayText(dates[0])} to ${dayText(dates[dates.length - 1])}. `, btn);
+}
+
 export function pickOrganism(options, want) {
   if (options.includes(want)) return want;
   return DEFAULT_ORGANISMS.find((o) => options.includes(o)) ?? options[0];
@@ -264,21 +316,21 @@ export function dateFilter(keys, place, target, date) {
 
 // ─── Chart spec ──────────────────────────────────────────────────────────────
 
-export function viralSpec(rows, { unit, yTitle, showLine, log, single, norm, narrow }) {
+export function viralSpec(rows, { unit, yTitle, showLine, log, single, norm, narrow, from, to, empty = 'No data for selected filters' }) {
   const legendAt = narrow ? 'bottom' : 'right'; // a side legend squeezes the plot on phones
   if (!rows.length) {
     return {
       description: 'Viral load chart',
       data: { values: [{}] },
       mark: { type: 'text', align: 'center', fontSize: 14 },
-      encoding: { text: { value: 'No data for selected filters' } },
+      encoding: { text: { value: empty } },
     };
   }
   const minPos = Math.min(...rows.map((r) => r.value).filter((v) => v > 0));
   const scale = log
     ? { type: 'symlog', constant: Number.isFinite(minPos) ? minPos : 1, nice: true }
     : { nice: true, zero: true, domainMin: 0 };
-  const x = { field: 'date', type: 'temporal', timeUnit: 'utcyearmonthdate', axis: { title: 'Date', labelOverlap: true, format: '%b %d, %Y' } };
+  const x = { field: 'date', type: 'temporal', timeUnit: 'utcyearmonthdate', ...xScale(from, to), axis: { title: 'Date', labelOverlap: true, format: '%b %d, %Y' } };
   const y = (field) => ({ field, type: 'quantitative', scale, axis: { title: yTitle } });
   const num = norm ? '.4~g' : '.4f';
   const tooltip = [
@@ -378,10 +430,9 @@ function markup() {
           <input type="date" id="viral-date-from-cal" class="viral-date-cal-input" /></label>
         <label class="viral-date-cal-field"><span class="viral-date-cal-label">To</span>
           <input type="date" id="viral-date-to-cal" class="viral-date-cal-input" /></label>
-        <div class="viral-presets" role="group" aria-label="Date range presets">
-          ${PRESETS.map(([t]) => `<button type="button" class="viral-preset" data-preset="${t}" aria-pressed="false">${t}</button>`).join('')}
-        </div>
+        ${presetButtons()}
       </div>
+      <p class="viral-range-note" id="viral-range-note" role="status" hidden></p>
       <div class="viral-chart-toggles">
         ${toggle('viral-show-line', 'Show line between points', false)}
         ${toggle('viral-loess-full-series', 'Full-series LOESS', true)}
@@ -424,6 +475,7 @@ export function initViral(rootEl) {
   let view = null;
   let seq = 0;
   let shownDates = []; // dates of the series on screen (for the presets)
+  let shown = null; // { from, to } on screen: kept when another choice changes
   const linkKeys = portalKeys().catch((err) => { console.error(err); return null; }); // null: chart without links
   // Wanted selections (resolved against the index on every update) and options.
   const st = { province: null, city: null, site: null, organism: null, gene: null, unit: null, from: null, to: null, norm: false, log: false, span: null };
@@ -488,12 +540,11 @@ export function initViral(rootEl) {
           ? ` PMMoV values exist for ${fmt(dates.length)} of ${fmt(allDates)} dates in this selection, from ${dates[0]} to ${dates[dates.length - 1]}.`
           : '');
     $('viral-date-range').classList.toggle('hidden', !dates.length);
-    const first = dates[0];
-    const last = dates[dates.length - 1];
-    let from = st.from && st.from <= last ? (st.from < first ? first : st.from) : rangeStart(dates, 12);
-    let to = st.to && st.to >= first ? (st.to > last ? last : st.to) : last;
-    if (from > to) [from, to] = [to, from];
+    const win = dateWindow(dates, st.from, st.to);
+    const { from, to } = win;
+    if (dates.length) shown = { from, to };
     syncDates(dates, from, to);
+    rangeNote($('viral-range-note'), win, dates, 'This selection has', () => { st.from = dates[0]; st.to = null; update(); });
 
     const visible = series.filter((d) => d.date >= from && d.date <= to);
     const spanDefault = r.single ? LOESS_SPAN : LOESS_SPAN_AREA;
@@ -516,6 +567,9 @@ export function initViral(rootEl) {
       single: r.single,
       norm,
       narrow: $('viral-load-chart')?.clientWidth < 600,
+      from,
+      to,
+      empty: dates.length ? `No data between ${dayText(from)} and ${dayText(to)}` : undefined,
     });
     view?.finalize();
     view = null;
@@ -552,11 +606,6 @@ export function initViral(rootEl) {
 
   function syncDates(dates, from, to) {
     shownDates = dates;
-    for (const id of ['viral-date-from-cal', 'viral-date-to-cal']) {
-      const el = $(id);
-      el.min = dates[0] || '';
-      el.max = dates[dates.length - 1] || '';
-    }
     $('viral-date-from-cal').value = from || '';
     $('viral-date-to-cal').value = to || '';
     const last = dates[dates.length - 1];
@@ -570,13 +619,13 @@ export function initViral(rootEl) {
     for (const [key] of SELECTS) {
       $(`viral-${key}`).addEventListener('change', (e) => {
         st[key] = e.target.value;
-        st.from = st.to = null; // new series: back to the last 12 months (as before)
+        if (shown) Object.assign(st, shown); // same dates for the new series, so the x-axis stays put
         notice('');
         update();
       });
     }
-    $('viral-date-from-cal').addEventListener('change', (e) => { st.from = e.target.value || null; update(); });
-    $('viral-date-to-cal').addEventListener('change', (e) => { st.to = e.target.value || null; update(); });
+    $('viral-date-from-cal').addEventListener('change', onDateBox(st, 'from', update));
+    $('viral-date-to-cal').addEventListener('change', onDateBox(st, 'to', update));
     rootEl.querySelectorAll('.viral-preset').forEach((b) => b.addEventListener('click', () => {
       // 12 months is the default (no dates in the URL); other presets become explicit dates.
       const months = PRESETS.find(([t]) => t === b.dataset.preset)[1];
@@ -592,7 +641,9 @@ export function initViral(rootEl) {
   }
 
   function setup(loaded) {
-    for (const k of ['province', 'city', 'site', 'organism', 'gene', 'unit', 'from', 'to']) st[k] = getParam(k);
+    for (const k of ['province', 'city', 'site', 'organism', 'gene', 'unit']) st[k] = getParam(k);
+    st.from = day(getParam('from'));
+    st.to = day(getParam('to'));
     st.norm = getParam('norm_pmmov') === '1';
     st.log = getParam('log') === '1';
     st.span = parseSpan(getParam('span'));

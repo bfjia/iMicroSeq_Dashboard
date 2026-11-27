@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   loess, withTrend, parseSpan, siteSeries, statSeries, hasRatio, rangeStart, pickOrganism, resolve, viralSpec, label, dateFilter,
+  day, dateWindow, dayText,
 } from '../public/js/viral.js';
 import { parseRecord, makeQa, makeStore, addRecord, buildOutput, uniqueId, round } from '../scripts/build-viral-loads.mjs';
 import { meanSem } from '../public/js/rules.js';
@@ -370,12 +371,34 @@ test('dateFilter: stored values for the place and target, that one day', () => {
   assert.equal(dateFilter(keys, place, { organism: 'Other virus', unit: 'u' }, '2024-03-05'), null);
 });
 
+test('day: real dates with a full year only', () => {
+  assert.equal(day('2024-02-29'), '2024-02-29');
+  for (const v of ['0002-01-01', '0202-01-01', '2023-02-29', '2024-13-01', '2024-1-01', 'abc', '', null, undefined]) {
+    assert.equal(day(v), null, String(v));
+  }
+});
+
+test('dateWindow: default last 12 months of data; chosen dates kept, not trimmed', () => {
+  const dates = ['2023-01-01', '2023-12-31', '2024-03-01', '2024-06-15'];
+  assert.deepEqual(dateWindow(dates, null, null), { from: '2023-12-31', to: '2024-06-15', empty: false });
+  // A window after the data (e.g. kept from a site with newer data) stays as chosen, and says it's empty.
+  assert.deepEqual(dateWindow(dates, '2025-11-27', '2026-11-27'), { from: '2025-11-27', to: '2026-11-27', empty: true });
+  assert.deepEqual(dateWindow(dates, '2022-01-01', '2024-12-31'), { from: '2022-01-01', to: '2024-12-31', empty: false });
+  assert.deepEqual(dateWindow(dates, '2024-04-01', '2024-01-01'), { from: '2024-01-01', to: '2024-04-01', empty: false });
+  assert.equal(dateWindow(dates, '2023-02-01', '2023-12-01').empty, true);
+  assert.equal(dayText('2024-06-05'), 'Jun 5, 2024');
+});
+
 test('viralSpec: empty, linear and symlog', () => {
   assert.equal(viralSpec([], {}).mark.type, 'text');
   const rows = withTrend([{ date: '2024-01-01', value: 0, sem: 0, n: 1, errorLow: 0, errorHigh: 0 },
     { date: '2024-01-02', value: 0.5, sem: 0.1, n: 2, errorLow: 0.4, errorHigh: 0.6 }]);
   const lin = viralSpec(rows, { unit: 'u', yTitle: 'u', single: false });
   assert.equal(lin.layer.length, 4);
+  assert.equal(lin.layer[0].encoding.x.scale, undefined);
+  const fixed = viralSpec(rows, { unit: 'u', yTitle: 'u', from: '2023-12-01', to: '2024-02-01' });
+  for (const l of fixed.layer) assert.deepEqual(l.encoding.x.scale.domain, [Date.UTC(2023, 11, 1), Date.UTC(2024, 1, 1)]);
+  assert.equal(viralSpec([], { empty: 'No data between' }).encoding.text.value, 'No data between');
   assert.equal(lin.layer[1].encoding.y.scale.zero, true);
   const log = viralSpec(rows, { unit: 'u', yTitle: 'u / PMMoV', log: true, single: true, norm: true });
   assert.deepEqual(log.layer[1].encoding.y.scale, { type: 'symlog', constant: 0.5, nice: true });
