@@ -90,9 +90,10 @@ Proof of concept for demonstration only. Not for scientific interpretation. Chec
 | Sample Coverage | One circle per location (sites at the same spot share one), size = samples, blue = active, light blue = historical. Hover for details, click for links: viral loads (sites with 10+ samples) and the site's records on the data portal | Sites without GPS sit at their province capital. Samples with no site are not shown. Click the map once to enable scroll zoom. |
 | Environmental Sites | One bar split by site type, share in the legend | Top 8 plus "Other". |
 | Samples Captured Over Time | Total samples to date (Cumulative, the default) or samples per month by organism (Monthly) | Monthly: up to 7 organisms coloured, rest "Other" (gray). |
+| Viral loads | Province, City, Site, Organism, Gene Target, Measurement Unit; From and To dates; 3m, 6m, 12m, All; switches: line, full-series LOESS, log scale; LOESS span (0.05 to 1; default 0.2 for one site, 0.1 when several sites are combined) | RT-PCR only. Dots are the mean per date with error bars (SEM); the solid gray line is a smoothed trend. Default: Alberta, Influenza A virus, last 12 months. "All" combines data without correcting for differences between labs. PMMoV normalisation awaits scientific sign-off, so it has no switch: add `norm_pmmov=1` to the address to see it (data only for Ontario). |
 | Sample breakdown | X axis and Segment By dropdowns, swap button, Count or Percent | Max 7 segments plus "Other". |
 | Data quality checks (for data stewards) | Own page, not in the main menu. Interactive Dashboard footer: Show data quality checks (or open `/qa`) | Nine checks; most have dropdowns that work on any portal field, and the address keeps your choices so a view can be shared. The bar at the top limits every check to one collecting organisation (except viral measurement values, which come from the nightly build). Metadata completeness (key or all fields; required fields marked); completeness by group (which organisation, province, etc. leaves a field out; heatmap for all key fields); latest sample by group (orange = none in 12 months); field profile (most common values, "not provided" terms, value patterns such as `9.9 A` next to `9.9`, spellings; number and date fields show a histogram and range); field over time (when a value, unit or habit changed); one value per item (e.g. a site with two latitudes); values written more than one way; sites without usable coordinates; viral measurement values that are not plotted (from the nightly build). Report problems to the data portal team; fix them at the source, not here. Hidden, not protected: anyone can open it. |
-| Viral loads | Province, City, Site, Organism, Gene Target, Measurement Unit; From and To dates; 3m, 6m, 12m, All; switches: line, full-series LOESS, log scale; LOESS span (0.05 to 1; default 0.2 for one site, 0.1 when several sites are combined) | RT-PCR only. Dots are the mean per date with error bars (SEM); the solid gray line is a smoothed trend. Default: Alberta, Influenza A virus, last 12 months. "All" combines data without correcting for differences between labs. PMMoV normalisation awaits scientific sign-off, so it has no switch: add `norm_pmmov=1` to the address to see it (data only for Ontario). |
+| Beta (charts not ready for the public) | Own page, linked from nowhere: open `/beta` | Compare sites: viral load trends at up to 8 sites on one chart. Organism, Gene Target, Add a site (× on a site removes it); From and To dates; 3m, 6m, 12m, All; switches: % of each site's peak (on), data points, full-series LOESS, log scale; LOESS span. Each line is a site's trend divided by its own peak in the date range, so sites with different units and levels can be compared; it shows timing and shape, not which site has more virus. Click a site in the legend to highlight it. The address keeps the choices. Hidden, not protected: anyone can open it. |
 
 ## 5. Maintain
 
@@ -103,7 +104,7 @@ Monthly:
 3. Cloudflare, Workers & Pages, the Worker, Metrics: requests well under 100,000 per day.
 4. Build minutes (account billing or usage page): well under 3,000 per month (expect about 500).
 
-Every three months: `npm install -D wrangler@latest`, `npm test`, publish (section 3). Check the pinned chart library versions in `public/index.html`, `public/dashboard.html` and `public/qa.html`.
+Every three months: `npm install -D wrangler@latest`, `npm test`, publish (section 3). Check the pinned chart library versions in `public/index.html`, `public/dashboard.html`, `public/qa.html` and `public/beta.html`.
 
 Rotate a key: map key, get a new one from CARTO, run `npx wrangler secret put CARTO_API_KEY --env=""`, update `.dev.vars`. Deploy hook: delete it (Settings, Build, Deploy Hooks), create a new one, store it again (section 3, first deploy, step 5).
 
@@ -125,6 +126,7 @@ In `public/js/config.js`. Then preview (section 2), `npm test`, publish (section
 | QA "Group by" choice | Add `geo_loc_name_city: 'City',` to `QA_GROUP_FIELDS` |
 | QA page-wide filter field | `QA_FILTER_FIELD = 'sample_collected_by_organisation_name';` becomes `'geo_loc_name_state_province_territory'` |
 | QA field shown first | Change a value in `QA_DEFAULTS`, e.g. `profile: 'geo_loc_name_site',` |
+| Beta sites shown first | Edit the site names in `BETA_COMPARE_SITES` |
 | Another "no value" term | Add `'Unknown',` to `NULL_TERMS` |
 
 ## 7. Troubleshooting
@@ -132,6 +134,7 @@ In `public/js/config.js`. Then preview (section 2), `npm test`, publish (section
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Map blank, tiles 503 | `CARTO_API_KEY` missing on the Worker | `npx wrangler secret put CARTO_API_KEY --env=""` |
+| Production only: pages slow, no footer date, `/api/graphql` 522 | Portal API rule missing in the `imicroseq-dataportal.ca` zone | Section 9, step 6 |
 | Panel says "Could not load this from the data portal" | Portal API down, or ad blocker | Disable ad blockers, click Try again, check the portal |
 | Viral data is old, no build that night | `DEPLOY_HOOK_URL` missing or the hook was deleted | The Worker, Logs: look for "DEPLOY_HOOK_URL secret is not set" or "Deploy hook failed". Redo section 3, first deploy, step 5 |
 | Viral data is old, builds failing | See the build log | The Worker, Deployments, open the failed build, read the last red lines |
@@ -162,6 +165,18 @@ Production is a separate repo; you open a pull request from this repo into it. N
 3. In the Cloudflare account that owns `imicroseq-dataportal.ca`: Workers & Pages, `dashboard-imicroseq-dataportal-ca`, Settings, Build, Connect. Same settings as section 3, step 2, except: the production repo, and deploy command `npx wrangler deploy --env production`. The first build starts the cutover.
 4. Map key, if the Worker has none yet: `npx wrangler secret put CARTO_API_KEY --env production`.
 5. Nightly rebuild: create a deploy hook on that Worker (section 3, step 5), then `npx wrangler secret put DEPLOY_HOOK_URL --env production`.
-6. Check `https://dashboard.imicroseq-dataportal.ca`: pages load, footer dates current, map shows tiles.
-7. In the production repo update the live links in `README.md` and `CLAUDE.md`, and `HELP_URL` in `public/js/config.js`. Publish.
-8. Optional: disconnect or delete the staging Worker `imicroseq-dashboard` to save build minutes (both Workers share the account's 3,000 if they are in the same account).
+6. Portal API rule. The production Worker is in the same Cloudflare zone as the portal API, so without this rule every data request fails with 522 after ~40 s and pages load slowly, with no footer date. In the `imicroseq-dataportal.ca` zone: Rules, Overview, Create rule, Configuration Rule.
+   - Name: `Arranger API: Strict SSL`
+   - Custom filter expression: `(http.host eq "arranger-environmental.imicroseq-dataportal.ca")`
+   - Then: SSL, Add, **Strict** (not Full, not "SSL-Only Origin Pull")
+   - Deploy. If warned the record is not proxied, click "Ignore and deploy rule anyway". The rule does not affect the portal itself.
+
+   Test (run twice; expect `200` with `x-cache: MISS`, then `x-cache: HIT`):
+   ```bash
+   curl -s -D - -o /dev/null -X POST -H 'Content-Type: application/json' \
+     --data '{"query":"{ analysis { hits { total } } }"}' \
+     https://dashboard.imicroseq-dataportal.ca/api/graphql | grep -iE '^(HTTP|x-cache)'
+   ```
+7. Check `https://dashboard.imicroseq-dataportal.ca`: pages load, footer dates current, map shows tiles.
+8. In the production repo update the live links in `README.md` and `CLAUDE.md`, and `HELP_URL` in `public/js/config.js`. Publish.
+9. Optional: disconnect or delete the staging Worker `imicroseq-dashboard` to save build minutes (both Workers share the account's 3,000 if they are in the same account).

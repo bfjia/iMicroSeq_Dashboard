@@ -8,12 +8,12 @@ import {
   embed, colorScale, panel, failed, dataTable, getParam, setParams, linkTo, fmt, LINK_TIP, LINK_COL,
 } from './charts.js';
 
-const BASE = 'data/viral/';
-const ALL = 'All';
+export const BASE = 'data/viral/';
+export const ALL = 'All';
 const TREND = 'Trend';
 const LOESS_DEGREE = 2;
 const DEFAULT_ORGANISMS = ['Influenza A virus', SARS2];
-const PRESETS = [['3m', 3], ['6m', 6], ['12m', 12], ['All', 0]];
+export const PRESETS = [['3m', 3], ['6m', 6], ['12m', 12], ['All', 0]];
 
 export const label = (v) => (v === BLANK || v === '' ? 'Not Provided' : v);
 const byName = (a, b) => (a === BLANK) - (b === BLANK) || a.localeCompare(b);
@@ -345,9 +345,9 @@ const SELECTS = [
   ['organism', 'Organism'], ['gene', 'Gene Target'], ['unit', 'Measurement Unit'],
 ];
 const WARNING =
-  '<strong>Data Aggregation:</strong> Choosing <strong>All</strong> within any filter combines all data in that category. <br>The plot shown below <strong> does not </strong> account for potential batch effects arising from differences within the category. <br>We are actively working on normalization methods to address this.';
+  '<strong>Data Aggregation:</strong> Choosing <strong>All</strong> within any filter combines all data in that category. <br>The plot shown above <strong> does not </strong> account for potential batch effects arising from differences within the category. <br>We are actively working on normalization methods to address this.';
 
-function toggle(id, text, checked) {
+export function toggle(id, text, checked) {
   return `<label class="viral-show-line-toggle">
     <input type="checkbox" id="${id}" class="viral-toggle-input"${checked ? ' checked' : ''} />
     <span class="viral-toggle-track" aria-hidden="true"></span>
@@ -364,14 +364,13 @@ function markup() {
       <span class="explore-badge">Viral Loads</span>
       <h2 class="explore-kicker-text">Trends over time</h2>
     </div>
-    <p class="explore-subtitle">See how the portal captures viral load data over time.</p>
+    <p class="explore-subtitle">See how the portal captures viral load data over time using RT-PCR (reverse transcription polymerase chain reaction) measurements.</p>
     <p class="explore-subtitle">Proof of concept demonstration purposes only. Not for scientific interpretation.</p>
   </header>
   <div class="viral-load-content">
     <div class="viral-load-filters">
       <div class="viral-filter-row">${SELECTS.slice(0, 3).map(select).join('')}</div>
       <div class="viral-filter-row">${SELECTS.slice(3).map(select).join('')}</div>
-      <p class="viral-assay-note">RT-PCR (reverse transcription polymerase chain reaction) measurements only.</p>
     </div>
     <div class="viral-date-range-wrap" id="viral-date-range">
       <div class="viral-date-calendar-row" role="group" aria-label="Choose dates on the calendar">
@@ -393,17 +392,17 @@ function markup() {
       </div>
       <p class="viral-assay-note" id="viral-norm-note" hidden></p>
     </div>
+    <p class="viral-notice" id="viral-notice" role="status" hidden></p>
+    <div id="viral-load-chart" class="viral-load-chart"></div>
     <p class="explore-subtitle viral-load-smoothing-note">
       The solid gray trend line is LOESS-smoothed (polynomial degree ${LOESS_DEGREE}, span <span id="viral-span-shown">${LOESS_SPAN}</span>).<br>By default it fits across all data matching your filters. Turn off Full-series LOESS to smooth only across the visible date window.
     </p>
     <p id="viral-all-filter-warning" class="viral-all-filter-warning explore-subtitle" hidden aria-live="polite"></p>
-    <p class="viral-notice" id="viral-notice" role="status" hidden></p>
-    <div id="viral-load-chart" class="viral-load-chart"></div>
     <div id="viral-table"></div>
   </div>`;
 }
 
-function fillSelect(el, options, value, withAll) {
+export function fillSelect(el, options, value, withAll) {
   el.textContent = '';
   const add = (v, t) => {
     const o = document.createElement('option');
@@ -615,7 +614,7 @@ export function initViral(rootEl) {
   });
 }
 
-async function getJSON(url, init) {
+export async function getJSON(url, init) {
   const res = await fetch(url, init);
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
   return res.json();

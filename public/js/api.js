@@ -1,11 +1,12 @@
 // GraphQL access. Proxy first (edge-cached, compressed), portal API directly if that fails.
-import { API_PROXY, API_DIRECT, DATE_FIELD, PORTAL_EXPLORER_URL } from './config.js';
+import { API_PROXY, API_DIRECT, PROXY_TIMEOUT_MS, DATE_FIELD, PORTAL_EXPLORER_URL } from './config.js';
 
 const memo = new Map(); // same query twice in one page view -> one request
 export let fetchedAt = null; // when the data was fetched upstream (shown in the footer)
 
-async function post(url, body) {
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+async function post(url, body, timeoutMs) {
+  const signal = timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined;
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal });
   if (!res.ok) throw new Error(`GraphQL ${res.status}`);
   const json = await res.json();
   if (json.errors?.length) throw new Error(json.errors.map((e) => e.message).join('; '));
@@ -16,7 +17,7 @@ async function post(url, body) {
 
 async function run(body) {
   try {
-    return await post(API_PROXY, body);
+    return await post(API_PROXY, body, PROXY_TIMEOUT_MS);
   } catch {
     try {
       return await post(API_DIRECT, body);
