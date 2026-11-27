@@ -93,6 +93,7 @@ Proof of concept for demonstration only. Not for scientific interpretation. Chec
 | Viral loads | Province, City, Site, Organism, Gene Target, Measurement Unit; From and To dates; 3m, 6m, 12m, All; switches: line, full-series LOESS, log scale; LOESS span (0.05 to 1; default 0.2 for one site, 0.1 when several sites are combined) | RT-PCR only. Dots are the mean per date with error bars (SEM); the solid gray line is a smoothed trend. Default: Alberta, Influenza A virus, last 12 months. "All" combines data without correcting for differences between labs. PMMoV normalisation awaits scientific sign-off, so it has no switch: add `norm_pmmov=1` to the address to see it (data only for Ontario). |
 | Sample breakdown | X axis and Segment By dropdowns, swap button, Count or Percent | Max 7 segments plus "Other". |
 | Data quality checks (for data stewards) | Own page, not in the main menu. Interactive Dashboard footer: Show data quality checks (or open `/qa`) | Nine checks; most have dropdowns that work on any portal field, and the address keeps your choices so a view can be shared. The bar at the top limits every check to one collecting organisation (except viral measurement values, which come from the nightly build). Metadata completeness (key or all fields; required fields marked); completeness by group (which organisation, province, etc. leaves a field out; heatmap for all key fields); latest sample by group (orange = none in 12 months); field profile (most common values, "not provided" terms, value patterns such as `9.9 A` next to `9.9`, spellings; number and date fields show a histogram and range); field over time (when a value, unit or habit changed); one value per item (e.g. a site with two latitudes); values written more than one way; sites without usable coordinates; viral measurement values that are not plotted (from the nightly build). Report problems to the data portal team; fix them at the source, not here. Hidden, not protected: anyone can open it. |
+| Beta (charts not ready for the public) | Own page, linked from nowhere: open `/beta` | Compare sites: viral load trends at up to 8 sites on one chart. Organism, Gene Target, Add a site (× on a site removes it); From and To dates; 3m, 6m, 12m, All; switches: % of each site's peak (on), data points, full-series LOESS, log scale; LOESS span. Each line is a site's trend divided by its own peak in the date range, so sites with different units and levels can be compared; it shows timing and shape, not which site has more virus. Click a site in the legend to highlight it. The address keeps the choices. Hidden, not protected: anyone can open it. |
 
 ## 5. Maintain
 
@@ -103,7 +104,7 @@ Monthly:
 3. Cloudflare, Workers & Pages, the Worker, Metrics: requests well under 100,000 per day.
 4. Build minutes (account billing or usage page): well under 3,000 per month (expect about 500).
 
-Every three months: `npm install -D wrangler@latest`, `npm test`, publish (section 3). Check the pinned chart library versions in `public/index.html`, `public/dashboard.html` and `public/qa.html`.
+Every three months: `npm install -D wrangler@latest`, `npm test`, publish (section 3). Check the pinned chart library versions in `public/index.html`, `public/dashboard.html`, `public/qa.html` and `public/beta.html`.
 
 Rotate a key: map key, get a new one from CARTO, run `npx wrangler secret put CARTO_API_KEY --env=""`, update `.dev.vars`. Deploy hook: delete it (Settings, Build, Deploy Hooks), create a new one, store it again (section 3, first deploy, step 5).
 
@@ -125,6 +126,7 @@ In `public/js/config.js`. Then preview (section 2), `npm test`, publish (section
 | QA "Group by" choice | Add `geo_loc_name_city: 'City',` to `QA_GROUP_FIELDS` |
 | QA page-wide filter field | `QA_FILTER_FIELD = 'sample_collected_by_organisation_name';` becomes `'geo_loc_name_state_province_territory'` |
 | QA field shown first | Change a value in `QA_DEFAULTS`, e.g. `profile: 'geo_loc_name_site',` |
+| Beta sites shown first | Edit the site names in `BETA_COMPARE_SITES` |
 | Another "no value" term | Add `'Unknown',` to `NULL_TERMS` |
 
 ## 7. Troubleshooting

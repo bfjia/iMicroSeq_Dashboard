@@ -626,6 +626,51 @@ body {
   width: 5.5rem;
 }
 
+/* Beta page (public/js/beta.js): chosen sites, one chip each with its line colour */
+.beta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.beta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.3rem 0.2rem 0.7rem;
+  font-size: 0.85rem;
+  color: #1f2933;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+}
+.beta-chip-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.beta-chip-remove {
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+}
+.beta-chip-remove:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+.beta-chip-remove:focus-visible {
+  outline: 2px solid #4a63e7;
+  outline-offset: 1px;
+}
+
 @media (max-width: 640px) {
   .viral-load-panel {
     padding-left: 1rem;

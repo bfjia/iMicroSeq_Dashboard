@@ -124,6 +124,8 @@ export const LOESS_SPAN = 0.2; // default for one site; viewers can change it on
 export const LOESS_SPAN_AREA = 0.1; // default when several sites are combined (city or site "All")
 export const LOESS_SPAN_MIN = 0.05;
 export const LOESS_SPAN_MAX = 1;
+// Beta page (beta.html), "Compare sites": sites shown first, by site name. Names not in the data are skipped.
+export const BETA_COMPARE_SITES = ['Vancouver Iona Island', 'Edmonton Goldbar', 'Winnipeg North End', 'Toronto Ashbridges Bay', 'Montreal North'];
 
 // Chart colours, in order of use. Checked for colour-blind separation; if you
 // change them, keep at most 8 and re-check (see docs/ARCHITECTURE.md, "Charts").

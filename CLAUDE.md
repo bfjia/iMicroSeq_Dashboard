@@ -22,6 +22,7 @@ Proof-of-concept dashboard for the [Canadian iMicroSeq Data Portal](https://imic
 | `public/js/index.js`, `public/js/map.js` | At a Glance page |
 | `public/js/dashboard.js`, `public/js/viral.js` | Interactive Dashboard page |
 | `public/qa.html`, `public/js/qa.js` | Data quality checks page (not in the menu; linked from the dashboard footer) |
+| `public/beta.html`, `public/js/beta.js` | Beta charts not ready for the public, at `/beta` (linked from no page) |
 | `scripts/build-viral-loads.mjs` | Nightly build of `public/data/viral/` (gitignored) |
 | `test/` | `node:test` unit tests, including a docs path check |
 
