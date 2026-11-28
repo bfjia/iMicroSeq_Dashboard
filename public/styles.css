@@ -470,6 +470,33 @@ body {
   font-weight: 800;
 }
 
+/* Chart with the LOESS note: below it, or beside it under the legend (.viral-side-note, placed by viral.js) */
+.viral-chart-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.viral-side-note {
+  position: absolute;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-align: left;
+}
+/* No data for the chart: in place of it */
+.viral-empty {
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 16rem auto 0;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.9rem;
+  color: #fff;
+  background: #b91c1c;
+  border-radius: 8px;
+  text-align: center;
+}
+
 .viral-load-chart {
   width: 100%;
   min-width: 280px;

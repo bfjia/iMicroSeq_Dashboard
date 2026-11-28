@@ -1,6 +1,6 @@
 // Shared page helpers: panel states, Vega embedding, data tables, URL state, footer.
 // Vega, Vega-Lite and vegaEmbed are globals loaded from the CDN in each page.
-import { PALETTE, OTHER_COLOR, HELP_URL } from './config.js';
+import { PALETTE, OTHER_COLOR, HELP_URL, SOURCE_URL } from './config.js';
 import { fetchedAt, portalUrl } from './api.js';
 
 const SCHEMA = 'https://vega.github.io/schema/vega-lite/v6.json';
@@ -285,4 +285,6 @@ export function setFooter() {
   if (asof) viralDate().then((d) => { asof.textContent = d; });
   const help = document.getElementById('footer-help');
   if (help) help.href = HELP_URL;
+  const source = document.getElementById('footer-source');
+  if (source) source.href = SOURCE_URL;
 }

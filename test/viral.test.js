@@ -389,8 +389,7 @@ test('dateWindow: default last 12 months of data; chosen dates kept, not trimmed
   assert.equal(dayText('2024-06-05'), 'Jun 5, 2024');
 });
 
-test('viralSpec: empty, linear and symlog', () => {
-  assert.equal(viralSpec([], {}).mark.type, 'text');
+test('viralSpec: linear and symlog', () => {
   const rows = withTrend([{ date: '2024-01-01', value: 0, sem: 0, n: 1, errorLow: 0, errorHigh: 0 },
     { date: '2024-01-02', value: 0.5, sem: 0.1, n: 2, errorLow: 0.4, errorHigh: 0.6 }]);
   const lin = viralSpec(rows, { unit: 'u', yTitle: 'u', single: false });
@@ -398,7 +397,6 @@ test('viralSpec: empty, linear and symlog', () => {
   assert.equal(lin.layer[0].encoding.x.scale, undefined);
   const fixed = viralSpec(rows, { unit: 'u', yTitle: 'u', from: '2023-12-01', to: '2024-02-01' });
   for (const l of fixed.layer) assert.deepEqual(l.encoding.x.scale.domain, [Date.UTC(2023, 11, 1), Date.UTC(2024, 1, 1)]);
-  assert.equal(viralSpec([], { empty: 'No data between' }).encoding.text.value, 'No data between');
   assert.equal(lin.layer[1].encoding.y.scale.zero, true);
   const log = viralSpec(rows, { unit: 'u', yTitle: 'u / PMMoV', log: true, single: true, norm: true });
   assert.deepEqual(log.layer[1].encoding.y.scale, { type: 'symlog', constant: 0.5, nice: true });

@@ -200,11 +200,9 @@ export const dayText = (d) =>
 
 // Preset buttons: counted back from the latest data point on screen, not from today.
 export const presetButtons = () => `
-  <div class="viral-date-cal-field"><span class="viral-date-cal-label">Up to latest data</span>
-    <div class="viral-presets" role="group" aria-label="Date range up to the latest data point">
-      ${PRESETS.map(([t, m]) => `<button type="button" class="viral-preset" data-preset="${t}" aria-pressed="false"
-        title="${m ? `The last ${m} months up to the latest data point` : 'Every date with data'}">${t}</button>`).join('')}
-    </div>
+  <div class="viral-presets" role="group" aria-label="Date range up to the latest data point">
+    ${PRESETS.map(([t, m]) => `<button type="button" class="viral-preset" data-preset="${t}" aria-pressed="false"
+      title="${m ? `The last ${m} months up to the latest data point` : 'Every date with data'}">${t}</button>`).join('')}
   </div>`;
 
 // Nothing between From and To: say where the data is, with a button that shows it. dates: sorted.
@@ -316,16 +314,9 @@ export function dateFilter(keys, place, target, date) {
 
 // ─── Chart spec ──────────────────────────────────────────────────────────────
 
-export function viralSpec(rows, { unit, yTitle, showLine, log, single, norm, narrow, from, to, empty = 'No data for selected filters' }) {
+// rows: at least one (no rows: the page shows a message instead of a chart).
+export function viralSpec(rows, { unit, yTitle, showLine, log, single, norm, narrow, from, to }) {
   const legendAt = narrow ? 'bottom' : 'right'; // a side legend squeezes the plot on phones
-  if (!rows.length) {
-    return {
-      description: 'Viral load chart',
-      data: { values: [{}] },
-      mark: { type: 'text', align: 'center', fontSize: 14 },
-      encoding: { text: { value: empty } },
-    };
-  }
   const minPos = Math.min(...rows.map((r) => r.value).filter((v) => v > 0));
   const scale = log
     ? { type: 'symlog', constant: Number.isFinite(minPos) ? minPos : 1, nice: true }
@@ -397,7 +388,7 @@ const SELECTS = [
   ['organism', 'Organism'], ['gene', 'Gene Target'], ['unit', 'Measurement Unit'],
 ];
 const WARNING =
-  '<strong>Data Aggregation:</strong> Choosing <strong>All</strong> within any filter combines all data in that category. <br>The plot shown above <strong> does not </strong> account for potential batch effects arising from differences within the category. <br>We are actively working on normalization methods to address this.';
+  '<strong>Data Aggregation:</strong> Choosing <strong>All</strong> within any filter combines all data in that category. <br>The plot below <strong> does not </strong> account for potential batch effects arising from differences within the category. <br>We are actively working on normalization methods to address this.';
 
 export function toggle(id, text, checked) {
   return `<label class="viral-show-line-toggle">
@@ -444,13 +435,38 @@ function markup() {
       <p class="viral-assay-note" id="viral-norm-note" hidden></p>
     </div>
     <p class="viral-notice" id="viral-notice" role="status" hidden></p>
-    <div id="viral-load-chart" class="viral-load-chart"></div>
-    <p class="explore-subtitle viral-load-smoothing-note">
-      The solid gray trend line is LOESS-smoothed (polynomial degree ${LOESS_DEGREE}, span <span id="viral-span-shown">${LOESS_SPAN}</span>).<br>By default it fits across all data matching your filters. Turn off Full-series LOESS to smooth only across the visible date window.
-    </p>
     <p id="viral-all-filter-warning" class="viral-all-filter-warning explore-subtitle" hidden aria-live="polite"></p>
+    <div class="viral-chart-wrap">
+      <div id="viral-load-chart" class="viral-load-chart"></div>
+      <p class="explore-subtitle viral-load-smoothing-note" id="viral-smoothing-note">
+        The solid gray trend line is LOESS-smoothed (polynomial degree ${LOESS_DEGREE}, span <span id="viral-span-shown">${LOESS_SPAN}</span>).<br>By default it fits across all data matching your filters. Turn off Full-series LOESS to smooth only across the visible date window.
+      </p>
+    </div>
     <div id="viral-table"></div>
   </div>`;
+}
+
+// Note in the empty space under the right-hand legend, as wide as the legend. view null, or it doesn't
+// fit above the bottom of the chart: back below the chart. Anchored on the right, so a resize can't move it
+// off the legend (the legend keeps its width and stays at the right edge).
+function sideNote(note, view) {
+  note.classList.remove('viral-side-note');
+  note.style.cssText = '';
+  const legends = view ? view.scenegraph().root.items[0].items.filter((m) => m.role === 'legend') : [];
+  const boxes = legends.flatMap((m) => m.items.map((i) => i.bounds));
+  const canvas = view?.container()?.querySelector('canvas, svg');
+  if (!boxes.length || !canvas) return;
+  const [ox, oy] = view.origin();
+  const x1 = Math.min(...boxes.map((b) => b.x1));
+  const x2 = Math.max(...boxes.map((b) => b.x2));
+  const y2 = Math.max(...boxes.map((b) => b.y2));
+  const c = canvas.getBoundingClientRect();
+  const w = note.parentElement.getBoundingClientRect();
+  note.classList.add('viral-side-note');
+  note.style.right = `${w.right - (c.left + ox + x2)}px`;
+  note.style.top = `${c.top - w.top + oy + y2 + 16}px`;
+  note.style.width = `${x2 - x1}px`;
+  if (note.offsetTop + note.offsetHeight > c.bottom - w.top) sideNote(note, null);
 }
 
 export function fillSelect(el, options, value, withAll) {
@@ -470,6 +486,7 @@ export function initViral(rootEl) {
   rootEl.innerHTML = markup();
   const $ = (id) => rootEl.querySelector(`#${id}`);
   const chartEl = $('viral-load-chart');
+  const note = $('viral-smoothing-note');
   const files = new Map(); // path -> Promise<json>
   let idx = null;
   let view = null;
@@ -515,7 +532,10 @@ export function initViral(rootEl) {
       // Let the browser paint the faded chart before the (blocking) redraw.
       await new Promise((done) => requestAnimationFrame(() => setTimeout(done)));
     } catch (err) {
-      if (token === seq) failed(chartEl, err, update);
+      if (token === seq) {
+        failed(chartEl, err, update);
+        sideNote(note, null);
+      }
       return;
     }
     if (token !== seq) return;
@@ -559,27 +579,39 @@ export function initViral(rootEl) {
     const rows = withTrend(visible, $('viral-loess-full-series').checked ? series : visible, span)
       .map((d) => ({ ...d, ...(links.get(d.date) ?? linkTo(null)) }));
     const unitLabel = label(unit);
-    const spec = viralSpec(rows, {
-      unit: unitLabel,
-      yTitle: norm ? `${unitLabel} / PMMoV` : unitLabel,
-      showLine: $('viral-show-line').checked,
-      log: st.log,
-      single: r.single,
-      norm,
-      narrow: $('viral-load-chart')?.clientWidth < 600,
-      from,
-      to,
-      empty: dates.length ? `No data between ${dayText(from)} and ${dayText(to)}` : undefined,
-    });
+    const narrow = chartEl.clientWidth < 600;
     view?.finalize();
     view = null;
-    try {
-      const res = await embed(chartEl, spec);
-      if (token !== seq) return res.view.finalize(); // a newer update owns the chart
-      view = res.view;
-    } catch (err) {
-      if (token === seq) failed(chartEl, err, update);
-      return;
+    if (rows.length) {
+      const spec = viralSpec(rows, {
+        unit: unitLabel,
+        yTitle: norm ? `${unitLabel} / PMMoV` : unitLabel,
+        showLine: $('viral-show-line').checked,
+        log: st.log,
+        single: r.single,
+        norm,
+        narrow,
+        from,
+        to,
+      });
+      try {
+        const res = await embed(chartEl, spec);
+        if (token !== seq) return res.view.finalize(); // a newer update owns the chart
+        view = res.view;
+      } catch (err) {
+        if (token === seq) {
+          failed(chartEl, err, update);
+          sideNote(note, null);
+        }
+        return;
+      }
+      sideNote(note, narrow ? null : view);
+    } else {
+      const p = document.createElement('p');
+      p.className = 'viral-empty';
+      p.textContent = dates.length ? `No data between ${dayText(from)} and ${dayText(to)}` : 'No data for selected filters';
+      chartEl.replaceChildren(p);
+      sideNote(note, null);
     }
     chartEl.classList.remove('viral-busy');
     const sig = (v) => (Number.isFinite(v) ? String(Number(v.toPrecision(4))) : '');
