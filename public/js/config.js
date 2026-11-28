@@ -141,6 +141,6 @@ export const MAP_VIRAL_MIN_SAMPLES = 10;
 export const PORTAL_EXPLORER_URL = 'https://imicroseq-dataportal.ca/explorer/environmental';
 
 // Link behind "How to use this dashboard" in the footer.
-export const HELP_URL = 'https://github.com/bfjia/iMicroSeq_Dashboard/blob/main/docs/SOP.md#4-using-the-dashboard';
+export const HELP_URL = 'https://github.com/brinkmanlab/iMicroSeqDataPortal_Dashboard/blob/main/docs/SOP.md#4-using-the-dashboard';
 // Link behind "Source code on GitHub" in the footer.
 export const SOURCE_URL = 'https://github.com/brinkmanlab/iMicroSeqDataPortal_Dashboard';
